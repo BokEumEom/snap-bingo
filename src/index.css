@@ -1,0 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Apple SD Gothic Neo", "Malgun Gothic",
+    ui-sans-serif, system-ui, sans-serif;
+
+  /* TDS adaptive tokens (light/dark switching handled by TDSMobileAITProvider).
+     Neutral/surface -> TDS adaptive greys. Brand blue -> Toss #3182f6 (below),
+     matching granite.config primaryColor so Button color="primary" and every
+     Tailwind blue-* utility render as one blue (no #2563eb/#0064FF split).
+     Warm accent colors (rose/amber) intentionally stay on the Tailwind palette
+     as the app's summer board identity — a deliberate design-system exception
+     recorded in STATE.md (2026-07-06). */
+  --color-page: var(--adaptiveGreyBackground);
+  --color-surface: var(--adaptiveBackgroundLevel01);
+  --color-hairline: var(--adaptiveHairlineBorder);
+  --color-neutral-50: var(--adaptiveGrey50);
+  --color-neutral-100: var(--adaptiveGrey100);
+  --color-neutral-200: var(--adaptiveGrey200);
+  --color-neutral-300: var(--adaptiveGrey300);
+  --color-neutral-400: var(--adaptiveGrey400);
+  --color-neutral-500: var(--adaptiveGrey500);
+  --color-neutral-600: var(--adaptiveGrey600);
+  --color-neutral-700: var(--adaptiveGrey700);
+  --color-neutral-800: var(--adaptiveGrey800);
+  --color-neutral-900: var(--adaptiveGrey900);
+
+  /* Brand blue anchored on the Toss primary token #3182f6, so Tailwind blue-*
+     utilities match granite.config primaryColor. Tints/darker steps are derived
+     from that single blue (blue family only — no foreign hue). */
+  --color-blue-50: #e8f3ff; /* Toss primary tint bg */
+  --color-blue-100: #c9e2ff; /* derived tint (badge/icon bg) */
+  --color-blue-500: #3182f6; /* Toss primary/accent */
+  --color-blue-600: #3182f6; /* main accent (text/icon/bg) */
+  --color-blue-700: #2b76e0; /* pressed/darker step */
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Desktop preview: center the app in a phone-width column */
+@media (min-width: 481px) {
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    background-color: #f5f5f5 !important;
+  }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom fade animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* BoardDetail 안내 목록: TDS Post.Ol/Li를 시맨틱 컨테이너로 쓰되 기본 마커/들여쓰기를
+   억제해 커스텀 원형 번호 뱃지 레이아웃을 유지한다. (TDS의 unlayered ::before 카운터를
+   이기려면 !important 필요 — reboot 리셋과 같은 cascade-layers 이슈) */
+.instr-post-list {
+  padding-left: 0 !important;
+  list-style: none !important;
+}
+.instr-post-step {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 0.625rem !important; /* gap-2.5 */
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.instr-post-step::before {
+  content: none !important;
+}
+.instr-post-list > li + li {
+  margin-top: 0.5rem !important; /* space-y-2 */
+}
