@@ -1,4 +1,5 @@
 import { Button } from '@toss/tds-mobile';
+import SheetFooter from './SheetFooter';
 
 interface InviteSheetProps {
   title: string;
@@ -18,8 +19,9 @@ export default function InviteSheet({
   onDismiss,
 }: InviteSheetProps) {
   return (
-    <div style={{ padding: '0 24px 24px' }}>
-      <div className="flex flex-col items-center text-center mb-4">
+    <div>
+      <div style={{ padding: '0 24px' }}>
+        <div className="flex flex-col items-center text-center mb-4">
         <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-3xl mb-3">
           {emoji}
         </div>
@@ -48,18 +50,22 @@ export default function InviteSheet({
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <div style={{ flex: 1 }}>
-          <Button color="dark" variant="weak" display="full" onClick={onDismiss}>
-            닫기
-          </Button>
-        </div>
-        <div style={{ flex: 1 }}>
-          <Button display="full" onClick={onAccept}>
-            시작하기
-          </Button>
-        </div>
       </div>
+
+      <SheetFooter>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ flex: 1 }}>
+            <Button color="dark" variant="weak" display="block" size="large" onClick={onDismiss}>
+              닫기
+            </Button>
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button display="block" size="large" onClick={onAccept}>
+              시작하기
+            </Button>
+          </div>
+        </div>
+      </SheetFooter>
     </div>
   );
 }

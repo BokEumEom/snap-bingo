@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Sparkles } from 'lucide-react';
 import { Button, useToast } from '@toss/tds-mobile';
 import { resizeImageDataUrl } from '../lib/image';
+import SheetFooter from './SheetFooter';
 
 interface UploadModalProps {
   cellTitle: string;
@@ -98,7 +99,8 @@ export default function UploadModal({
   };
 
   return (
-    <div className="px-6 pt-2 pb-6 space-y-6">
+    <div>
+      <div className="px-6 pt-2 space-y-6">
 
       {isVerifying ? (
         <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
@@ -148,14 +150,19 @@ export default function UploadModal({
             <p className="text-sm font-semibold text-neutral-800">기기에서 사진 업로드</p>
             <p className="text-xs text-neutral-400 mt-1">파일을 마우스로 끌어다 놓거나 클릭하세요</p>
           </div>
-
-          {/* 취소 — 사진을 올리면 바로 등록되며, 이 버튼으로 시트를 닫아요 */}
-          <div className="pt-2">
-            <Button color="dark" variant="weak" display="full" size="large" onClick={onClose}>
-              취소
-            </Button>
-          </div>
         </>
+      )}
+
+      </div>
+
+      {/* 취소 — 사진을 올리면 바로 등록되며, 이 버튼으로 시트를 닫아요.
+          하단 고정 CTA로 기기 하단과 자연스럽게 이어져요. 인증 중에는 자체 취소를 써요. */}
+      {!isVerifying && (
+        <SheetFooter>
+          <Button color="dark" variant="weak" display="block" size="large" onClick={onClose}>
+            취소
+          </Button>
+        </SheetFooter>
       )}
 
     </div>

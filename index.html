@@ -2,7 +2,11 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover: 웹뷰를 홈 인디케이터/노치 아래까지 풀블리드로 확장해요.
+         이게 있어야 position:fixed 바텀시트의 bottom:0이 '물리 화면 바닥'과 이어지고,
+         env(safe-area-inset-*)가 실제 값을 반환해요(BottomNav·SheetFooter의 safe-area가
+         이 값을 전제로 설계됨). 없으면 iOS에서 시트가 홈 인디케이터 위에 떠 틈이 생겨요. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="여름 미션을 사진으로 인증하고 친구와 함께 빙고를 완성해요." />
     <title>찍고빙고 - 여름 사진 빙고</title>
     <script>

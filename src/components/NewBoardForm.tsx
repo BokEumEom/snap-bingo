@@ -3,6 +3,7 @@ import { TextField, Button } from '@toss/tds-mobile';
 import { BOARD_TEMPLATES } from '../data';
 import { NewBoardDraft } from '../types';
 import Emoji from './Emoji';
+import SheetFooter from './SheetFooter';
 
 interface NewBoardFormProps {
   onSubmit: (draft: NewBoardDraft) => void;
@@ -68,9 +69,10 @@ export default function NewBoardForm({ onSubmit, onCancel }: NewBoardFormProps) 
   };
 
   return (
-    <div style={{ padding: '0 24px 24px' }}>
-      <p className="text-xs font-bold text-neutral-500 mb-2">테마 선택</p>
-      <div className="flex flex-col gap-2 mb-5">
+    <div>
+      <div style={{ padding: '0 24px' }}>
+        <p className="text-xs font-bold text-neutral-500 mb-2">테마 선택</p>
+        <div className="flex flex-col gap-2 mb-5">
         {OPTIONS.map((option) => {
           const active = option.id === selectedId;
           return (
@@ -131,24 +133,28 @@ export default function NewBoardForm({ onSubmit, onCancel }: NewBoardFormProps) 
         </div>
       )}
 
-      {/* size="large"(radius 14px) — 보드 삭제 확인 다이얼로그의 기본 버튼과 radius를 맞춰요. */}
-      <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-        <div style={{ flex: 1 }}>
-          <Button color="dark" variant="weak" display="block" size="large" onClick={onCancel}>
-            취소
-          </Button>
-        </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            display="block"
-            size="large"
-            disabled={trimmedName === ''}
-            onClick={handleCreate}
-          >
-            만들기
-          </Button>
-        </div>
       </div>
+
+      {/* size="large"(radius 14px) — 보드 삭제 확인 다이얼로그의 기본 버튼과 radius를 맞춰요. */}
+      <SheetFooter>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ flex: 1 }}>
+            <Button color="dark" variant="weak" display="block" size="large" onClick={onCancel}>
+              취소
+            </Button>
+          </div>
+          <div style={{ flex: 1 }}>
+            <Button
+              display="block"
+              size="large"
+              disabled={trimmedName === ''}
+              onClick={handleCreate}
+            >
+              만들기
+            </Button>
+          </div>
+        </div>
+      </SheetFooter>
     </div>
   );
 }

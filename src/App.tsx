@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useBottomSheet } from '@toss/tds-mobile';
 import { ViewState, BingoBoard, BingoCell, CompletionTier } from './types';
 import { INITIAL_BOARDS, BOARD_TEMPLATES } from './data';
 import { computeEarnedBadgeIds, countBingoLines } from './lib/badges';
@@ -7,6 +6,7 @@ import { getStorageItem, setStorageItem } from './lib/storage';
 import { parseInvite, Invite } from './lib/invite';
 import NewBoardForm from './components/NewBoardForm';
 import InviteSheet from './components/InviteSheet';
+import BottomSheet from './components/BottomSheet';
 import DashboardView from './components/DashboardView';
 import BoardDetailView from './components/BoardDetailView';
 import MissionCompleteView from './components/MissionCompleteView';
@@ -29,7 +29,11 @@ const INITIAL_INVITE: Invite | null = (() => {
 })();
 
 export default function App() {
-  const { open: openSheet, close: closeSheet } = useBottomSheet();
+  // 커스텀 BottomSheet(바닥 연결 슬라이드업)로 여는 시트들의 열림/데이터 상태.
+  // 데이터(pendingInvite)는 닫힘 애니메이션 동안 유지되도록 open 플래그와 분리해요.
+  const [isNewBoardOpen, setIsNewBoardOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [pendingInvite, setPendingInvite] = useState<Invite | null>(null);
   const [boards, setBoards] = useState<BingoBoard[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   // 첫 보드 생성/선택 전까지의 플레이스홀더. 어떤 보드 id와도 매칭되지 않아
@@ -176,64 +180,46 @@ export default function App() {
     setViewState('board');
   };
 
-  const handleCreateNewBoard = () => {
-    openSheet({
-      header: '새 챌린지 만들기',
-      children: (
-        <NewBoardForm
-          onSubmit={(draft) => {
-            if (draft.type === 'custom') {
-              createCustomBoard(draft.name, draft.missions);
-            } else {
-              createBoardFromTemplate(draft.templateId, draft.name);
-            }
-            closeSheet();
-          }}
-          onCancel={closeSheet}
-        />
-      ),
-    });
-  };
+  const handleCreateNewBoard = () => setIsNewBoardOpen(true);
 
   // '같은 챌린지 함께 시작' — 친구가 공유한 딥링크로 들어오면 같은 보드를 내 폰에 만들지 물어봐요.
   const openInviteSheet = (invite: Invite) => {
-    const preview =
-      invite.kind === 'template'
+    setPendingInvite(invite);
+    setIsInviteOpen(true);
+  };
+
+  // 초대 시트에 보여줄 미리보기(제목·이모지·미션). 닫힘 애니메이션 동안에도 pendingInvite를
+  // 유지하므로 시트가 내려가는 중에도 내용이 사라지지 않아요.
+  const invitePreview =
+    pendingInvite == null
+      ? null
+      : pendingInvite.kind === 'template'
         ? (() => {
             const template =
-              BOARD_TEMPLATES.find((t) => t.id === invite.templateId) ??
+              BOARD_TEMPLATES.find((t) => t.id === pendingInvite.templateId) ??
               BOARD_TEMPLATES[0];
             return {
-              title: invite.name || template.label,
+              title: pendingInvite.name || template.label,
               emoji: template.emoji,
               missions: template.cells.map((c) => c.title),
             };
           })()
         : {
-            title: invite.name || '함께하는 챌린지',
+            title: pendingInvite.name || '함께하는 챌린지',
             emoji: '📸',
-            missions: invite.missions,
+            missions: pendingInvite.missions,
           };
 
-    openSheet({
-      header: '함께 하기 초대',
-      children: (
-        <InviteSheet
-          title={preview.title}
-          emoji={preview.emoji}
-          missions={preview.missions}
-          onAccept={() => {
-            if (invite.kind === 'template') {
-              createBoardFromTemplate(invite.templateId, preview.title);
-            } else {
-              createCustomBoard(preview.title, invite.missions);
-            }
-            closeSheet();
-          }}
-          onDismiss={closeSheet}
-        />
-      ),
-    });
+  const handleAcceptInvite = () => {
+    if (pendingInvite == null || invitePreview == null) {
+      return;
+    }
+    if (pendingInvite.kind === 'template') {
+      createBoardFromTemplate(pendingInvite.templateId, invitePreview.title);
+    } else {
+      createCustomBoard(invitePreview.title, pendingInvite.missions);
+    }
+    setIsInviteOpen(false);
   };
 
   // 보드 로드 후, 진입 딥링크에 초대가 있으면 시트를 한 번만 띄워요.
@@ -356,6 +342,40 @@ export default function App() {
           <div className="animate-spin text-blue-600 font-bold">로딩 중...</div>
         </div>
       )}
+
+      <BottomSheet
+        open={isNewBoardOpen}
+        onClose={() => setIsNewBoardOpen(false)}
+        title="새 챌린지 만들기"
+      >
+        <NewBoardForm
+          onSubmit={(draft) => {
+            if (draft.type === 'custom') {
+              createCustomBoard(draft.name, draft.missions);
+            } else {
+              createBoardFromTemplate(draft.templateId, draft.name);
+            }
+            setIsNewBoardOpen(false);
+          }}
+          onCancel={() => setIsNewBoardOpen(false)}
+        />
+      </BottomSheet>
+
+      <BottomSheet
+        open={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+        title="함께 하기 초대"
+      >
+        {invitePreview && (
+          <InviteSheet
+            title={invitePreview.title}
+            emoji={invitePreview.emoji}
+            missions={invitePreview.missions}
+            onAccept={handleAcceptInvite}
+            onDismiss={() => setIsInviteOpen(false)}
+          />
+        )}
+      </BottomSheet>
     </div>
   );
 }

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { ArrowLeft, Camera, Check, Lock, UserPlus } from 'lucide-react';
-import { useToast, useDialog, useBottomSheet, Badge, ProgressBar, Post } from '@toss/tds-mobile';
+import { useToast, useDialog, Badge, ProgressBar, Post } from '@toss/tds-mobile';
 import { adaptive } from '@toss/tds-colors';
 import { BingoBoard, BingoCell, NavKey, Badge as BadgeItem } from '../types';
 import { BADGES } from '../data';
 import { shareBoardInvite } from '../lib/share';
 import UploadModal from './UploadModal';
+import BottomSheet from './BottomSheet';
 import BadgeModal from './BadgeModal';
 import Emoji from './Emoji';
 
@@ -28,7 +29,9 @@ export default function BoardDetailView({
 }: BoardDetailViewProps) {
   const { openToast } = useToast();
   const { openConfirm } = useDialog();
-  const { open: openSheet, close: closeSheet } = useBottomSheet();
+  // 사진 인증 시트(커스텀 BottomSheet). uploadCell은 닫힘 애니메이션 동안 유지되도록 open과 분리.
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadCell, setUploadCell] = useState<BingoCell | null>(null);
 
   const handleDelete = async () => {
     const ok = await openConfirm({
@@ -48,24 +51,10 @@ export default function BoardDetailView({
   const completedCount = board.cells.filter(c => c.completed).length;
   const totalCount = board.cells.length;
 
-  // 홈의 "새 빙고 보드 만들기"와 동일하게 바텀시트를 아래에서 위로 올려 사진 인증을 받아요.
+  // 홈의 "새 챌린지 만들기"와 동일하게 커스텀 BottomSheet를 아래에서 위로 올려 사진 인증을 받아요.
   const openUploadSheet = (cell: BingoCell) => {
-    openSheet({
-      header: `${cell.title} 인증`,
-      children: (
-        <UploadModal
-          cellTitle={cell.title}
-          cellIcon={cell.icon}
-          cellId={cell.id}
-          boardId={board.id}
-          onClose={closeSheet}
-          onUploadSuccess={(photoUrl) => {
-            closeSheet();
-            onCompleteCell(board.id, cell.id, photoUrl);
-          }}
-        />
-      ),
-    });
+    setUploadCell(cell);
+    setIsUploadOpen(true);
   };
 
   const handleCellClick = (cell: BingoCell) => {
@@ -266,6 +255,26 @@ export default function BoardDetailView({
       {selectedBadge && (
         <BadgeModal badge={selectedBadge} onClose={() => setSelectedBadge(null)} />
       )}
+
+      <BottomSheet
+        open={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        title={uploadCell ? `${uploadCell.title} 인증` : undefined}
+      >
+        {uploadCell && (
+          <UploadModal
+            cellTitle={uploadCell.title}
+            cellIcon={uploadCell.icon}
+            cellId={uploadCell.id}
+            boardId={board.id}
+            onClose={() => setIsUploadOpen(false)}
+            onUploadSuccess={(photoUrl) => {
+              setIsUploadOpen(false);
+              onCompleteCell(board.id, uploadCell.id, photoUrl);
+            }}
+          />
+        )}
+      </BottomSheet>
 
     </div>
   );
