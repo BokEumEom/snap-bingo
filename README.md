@@ -76,12 +76,16 @@ npm run build      # ait build → dist/
 
 ## 배포하기
 
-앱인토스 배포 API 키는 [앱인토스 콘솔](https://apps-in-toss.toss.im/) > 워크스페이스 > API 키 > 콘솔 API 키에서 발급받아요.
+**실제 미니앱 출시(앱인토스)** — 이게 진짜 배포예요. `ait build`가 `dist/`를 Toss 콘솔용 `.ait` 번들로 패키징하고, `ait deploy`가 콘솔에 올려요. 배포 API 키는 [앱인토스 콘솔](https://apps-in-toss.toss.im/) > 워크스페이스 > API 키 > 콘솔 API 키에서 발급받아요.
 
 ```bash
-npm run build
-npm run deploy     # ait deploy
+npm run build      # ait build → dist/ + snap-bingo.ait
+npm run deploy     # ait deploy → 콘솔 업로드
 ```
+
+**Vercel(선택) = 브라우저용 웹 데모/공개 프리뷰**예요. AIT 출시와는 별개예요. Vercel에서는 `ait build`(콘솔용 `.ait` 패키징)를 돌리면 안 되고 — 헤드리스 환경에서 깨져요 — `vercel.json`이 `vite build`(정적 사이트)만 돌리도록 고정해 뒀어요(빌드 커맨드 `vite build`, 출력 `dist`). 대시보드 Build Command는 비워 두거나 `vite build`로 맞추세요.
+
+> 웹 데모에선 토스 브리지 기능이 **브라우저로 폴백**돼요: 공유(`getTossShareLink`/`share`)→안내 토스트, 네이티브 `Storage`→`localStorage`(`src/lib/devBridgeShim.ts`). 초대 딥링크 `intoss://snap-bingo`도 데스크톱 브라우저에선 안 열려요(토스 앱 전용 스킴). 즉 Vercel은 UI 확인·공유 링크 미리보기 용도이고, 브리지 실동작은 콘솔 등록 후 샌드박스/실기기에서 확인해요.
 
 ## 알려진 제약 (출시 전 정리 필요)
 
