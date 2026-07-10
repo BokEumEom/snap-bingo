@@ -4,7 +4,7 @@ import { useToast, useDialog, Badge, ProgressBar, Post } from '@toss/tds-mobile'
 import { adaptive } from '@toss/tds-colors';
 import { BingoBoard, BingoCell, NavKey, Badge as BadgeItem } from '../types';
 import { BADGES } from '../data';
-import { shareBoardInvite } from '../lib/share';
+import { shareBoardInvite, shareRoomInvite } from '../lib/share';
 import UploadModal from './UploadModal';
 import BottomSheet from './BottomSheet';
 import BadgeModal from './BadgeModal';
@@ -17,6 +17,8 @@ interface BoardDetailViewProps {
   onCompleteCell: (boardId: string, cellId: number, photoUrl: string) => void;
   onDeleteBoard: (boardId: string) => void;
   onNavigate: (view: NavKey | 'achievement') => void;
+  // 공유(함께) 보드일 때 참가자 목록. 있으면 멤버 줄과 칸별 인증자 칩을 보여줘요.
+  members?: { uid: string; nickname: string }[];
 }
 
 export default function BoardDetailView({
@@ -25,8 +27,10 @@ export default function BoardDetailView({
   onBack,
   onCompleteCell,
   onDeleteBoard,
-  onNavigate
+  onNavigate,
+  members = []
 }: BoardDetailViewProps) {
+  const shared = board.shared === true;
   const { openToast } = useToast();
   const { openConfirm } = useDialog();
   // 사진 인증 시트(커스텀 BottomSheet). uploadCell은 닫힘 애니메이션 동안 유지되도록 open과 분리.
@@ -43,8 +47,9 @@ export default function BoardDetailView({
     if (ok) onDeleteBoard(board.id);
   };
 
-  // 같은 챌린지로 친구를 초대 — 딥링크에 이 보드 설정을 실어 공유해요.
-  const handleInvite = () => shareBoardInvite(openToast, board);
+  // 친구 초대 — 공유 보드면 같은 룸에 실시간으로 참가하는 링크, 솔로면 각자 채우는 링크를 공유해요.
+  const handleInvite = () =>
+    shared ? shareRoomInvite(openToast, board) : shareBoardInvite(openToast, board);
 
   const [selectedBadge, setSelectedBadge] = useState<BadgeItem | null>(null);
 
@@ -106,7 +111,9 @@ export default function BoardDetailView({
               <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">
                 {board.eyebrow ?? '여름 챌린지'}
               </p>
-              <h2 className="text-2xl font-bold text-neutral-900 tracking-tight">나의 빙고 보드</h2>
+              <h2 className="text-2xl font-bold text-neutral-900 tracking-tight">
+                {shared ? '함께 빙고 보드' : '나의 빙고 보드'}
+              </h2>
             </div>
             <Badge variant="fill" size="small" color="blue">
               {`${completedCount} / ${totalCount} 완료`}
@@ -122,13 +129,30 @@ export default function BoardDetailView({
           />
         </section>
 
-        {/* 같은 챌린지 함께 시작 — 친구를 초대해 각자 자기 폰에서 같은 보드를 채워요 */}
+        {/* 공유 보드면 참가자 줄을 보여줘요 — 지금 이 한 판을 함께 채우는 사람들이에요. */}
+        {shared && members.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-neutral-500">
+              함께 {members.length}명
+            </span>
+            {members.map((m) => (
+              <span
+                key={m.uid}
+                className="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 text-[11px] font-bold"
+              >
+                {m.nickname}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* 친구 초대 — 공유 보드면 같은 룸에 실시간 참가, 솔로면 각자 채우기 링크를 공유해요 */}
         <button
           onClick={handleInvite}
           className="w-full flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-blue-50 text-blue-600 text-sm font-bold hover:bg-blue-100 active:scale-[0.99] transition-all"
         >
           <UserPlus size={16} />
-          이 챌린지에 친구 초대하기
+          {shared ? '함께 채울 친구 초대하기' : '이 챌린지에 친구 초대하기'}
         </button>
 
         {/* 3x3 Bingo Grid */}
@@ -151,6 +175,12 @@ export default function BoardDetailView({
                       <Check size={14} strokeWidth={3} />
                     </div>
                   </div>
+                  {/* 공유 보드: 이 칸을 채운 사람 */}
+                  {shared && cell.completedBy && (
+                    <div className="absolute top-1.5 left-1.5 max-w-[80%] px-1.5 py-0.5 rounded-full bg-black/55 text-white text-[9px] font-bold truncate">
+                      {cell.completedBy.nickname}
+                    </div>
+                  )}
                   <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
                     <p className="text-white text-[10px] font-bold leading-tight truncate">{cell.title}</p>
                   </div>
@@ -230,15 +260,17 @@ export default function BoardDetailView({
           </Post.Ol>
         </section>
 
-        {/* Delete board */}
-        <section className="pt-1">
-          <button
-            onClick={handleDelete}
-            className="w-full text-center text-xs font-semibold text-rose-500 py-3 rounded-2xl! hover:bg-rose-50/60 active:scale-[0.98] transition-all"
-          >
-            이 보드 삭제하기
-          </button>
-        </section>
+        {/* Delete board — 공유 보드에선 숨겨요(여럿이 함께 쓰는 판이라 개인이 삭제하지 않아요). */}
+        {!shared && (
+          <section className="pt-1">
+            <button
+              onClick={handleDelete}
+              className="w-full text-center text-xs font-semibold text-rose-500 py-3 rounded-2xl! hover:bg-rose-50/60 active:scale-[0.98] transition-all"
+            >
+              이 보드 삭제하기
+            </button>
+          </section>
+        )}
 
       </main>
 

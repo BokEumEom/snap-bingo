@@ -20,9 +20,22 @@ export interface BoardTemplate {
 }
 
 // 새 보드 생성 요청 — 템플릿 기반이거나, 사용자가 미션을 직접 입력한 커스텀이에요.
+// shared=true면 혼자가 아니라 '함께(실시간 공동 빙고판)' 룸으로 만들고, nickname을 함께 실어요.
 export type NewBoardDraft =
-  | { type: 'template'; templateId: string; name: string }
-  | { type: 'custom'; name: string; missions: string[] };
+  | {
+      type: 'template';
+      templateId: string;
+      name: string;
+      shared?: boolean;
+      nickname?: string;
+    }
+  | {
+      type: 'custom';
+      name: string;
+      missions: string[];
+      shared?: boolean;
+      nickname?: string;
+    };
 
 export interface BingoBoard {
   id: string;

@@ -1,7 +1,7 @@
 import { getTossShareLink, share } from '@apps-in-toss/web-framework';
 
 import { BingoBoard } from '../types';
-import { encodeInviteParams } from './invite';
+import { encodeInviteParams, encodeRoomInviteParams } from './invite';
 
 // 앱 딥링크 (granite.config.ts appName: "snap-bingo" 기반 스킴).
 // TODO(app-in-toss): 콘솔 등록 후 정확한 딥링크로 확정.
@@ -92,5 +92,30 @@ export async function shareBoardInvite(
     await share({ message: `${message}\n${link}` });
   } catch {
     onFallback('토스 앱에서 친구를 초대할 수 있어요. 같은 챌린지를 함께 채워보세요!');
+  }
+}
+
+/**
+ * '함께(실시간 공동 빙고판)' 룸에 친구를 초대해요. 딥링크에 room=<룸 id>를 실어,
+ * 받은 사람이 같은 룸에 참가해 한 판을 실시간으로 함께 채워요.
+ */
+export async function shareRoomInvite(
+  onFallback: (message: string) => void,
+  board: BingoBoard,
+): Promise<void> {
+  if (board.roomId == null) {
+    onFallback('공유 보드가 아니라 초대 링크를 만들 수 없어요.');
+    return;
+  }
+  const target = `${DEEP_LINK}?${encodeRoomInviteParams(board.roomId)}`;
+  const message = `찍고빙고에서 '${board.title}' 빙고를 함께 채워요! 한 판을 실시간으로 같이 완성해요 📸`;
+  try {
+    const link = await withTimeout(
+      getTossShareLink(target, defaultOgImageUrl()),
+      2500,
+    );
+    await share({ message: `${message}\n${link}` });
+  } catch {
+    onFallback('토스 앱에서 함께 채울 친구를 초대할 수 있어요.');
   }
 }

@@ -85,10 +85,15 @@ export default function DashboardView({
           )}
           <div className="space-y-3">
             {boards.map((board) => {
+              const shared = board.shared === true;
               const completedCount = board.cells.filter(c => c.completed).length;
               const totalCount = board.cells.length;
-              const percent = Math.round((completedCount / totalCount) * 100);
-              const earned = completedCount === totalCount;
+              const percent =
+                totalCount > 0
+                  ? Math.round((completedCount / totalCount) * 100)
+                  : 0;
+              // 공유 보드 카드는 라이브 개수를 미리 알 수 없어 트로피/퍼센트 대신 '함께' 배지를 보여줘요.
+              const earned = !shared && totalCount > 0 && completedCount === totalCount;
 
               return (
                 <div 
@@ -115,26 +120,36 @@ export default function DashboardView({
                       {board.title}
                     </h4>
                     <p className="text-xs text-neutral-500 mt-1 truncate">
-                      {board.cells.slice(0, 3).map((c) => c.title).join(' · ')}
+                      {shared
+                        ? '함께 채우는 챌린지'
+                        : board.cells.slice(0, 3).map((c) => c.title).join(' · ')}
                     </p>
                   </div>
 
-                  {/* 진행 — 완성 개수(N/N)와 퍼센트(%)를 같은 뱃지 UI로 나란히(개수가 % 앞) */}
+                  {/* 진행 — 솔로는 개수(N/N)+퍼센트(%), 공유는 '함께' 배지 */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <Badge
-                      variant="weak"
-                      size="xsmall"
-                      color={percent === 100 ? 'green' : 'blue'}
-                    >
-                      {`${completedCount}/${totalCount}`}
-                    </Badge>
-                    <Badge
-                      variant="weak"
-                      size="xsmall"
-                      color={percent === 100 ? 'green' : 'blue'}
-                    >
-                      {`${percent}%`}
-                    </Badge>
+                    {shared ? (
+                      <Badge variant="weak" size="xsmall" color="blue">
+                        함께
+                      </Badge>
+                    ) : (
+                      <>
+                        <Badge
+                          variant="weak"
+                          size="xsmall"
+                          color={percent === 100 ? 'green' : 'blue'}
+                        >
+                          {`${completedCount}/${totalCount}`}
+                        </Badge>
+                        <Badge
+                          variant="weak"
+                          size="xsmall"
+                          color={percent === 100 ? 'green' : 'blue'}
+                        >
+                          {`${percent}%`}
+                        </Badge>
+                      </>
+                    )}
                   </div>
                 </div>
               );

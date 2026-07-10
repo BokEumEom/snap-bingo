@@ -1,11 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
-import { ViewState, BingoBoard, BingoCell, CompletionTier } from './types';
+import { useToast } from '@toss/tds-mobile';
+import {
+  ViewState,
+  BingoBoard,
+  BingoCell,
+  CompletionTier,
+  NewBoardDraft,
+} from './types';
 import { INITIAL_BOARDS, BOARD_TEMPLATES } from './data';
 import { computeEarnedBadgeIds, countBingoLines } from './lib/badges';
 import { getStorageItem, setStorageItem } from './lib/storage';
-import { parseInvite, Invite } from './lib/invite';
+import { parseInvite, parseRoomId, Invite } from './lib/invite';
+import { createRoom } from './lib/room';
+import { setNickname } from './lib/identity';
+import { useSharedBoard } from './hooks/useSharedBoard';
 import NewBoardForm from './components/NewBoardForm';
 import InviteSheet from './components/InviteSheet';
+import RoomJoinSheet from './components/RoomJoinSheet';
 import BottomSheet from './components/BottomSheet';
 import DashboardView from './components/DashboardView';
 import BoardDetailView from './components/BoardDetailView';
@@ -17,16 +28,24 @@ import './App.css';
 // v3: cell.icon changed from Lucide icon names to emoji (테마 템플릿 도입) —
 // bumping the key discards incompatible v2 data so it re-seeds cleanly.
 const STORAGE_KEY = 'photo_bingo_boards_v3';
+// 참가/생성한 공유(함께) 룸의 가벼운 참조(대시보드 카드용). 라이브 상태는 룸에서 실시간으로 받아요.
+const SHARED_REFS_KEY = 'photo_bingo_shared_refs_v1';
 
-// 진입 시 딥링크 초대를 1회 복원해요. 프레임워크가 URL 쿼리를 지우기 전에
-// index.html 인라인 스크립트가 저장해 둔 원본 쿼리스트링(window.__ENTRY_SEARCH)을 읽어요.
-const INITIAL_INVITE: Invite | null = (() => {
-  if (typeof window === 'undefined') return null;
+// 진입 시 딥링크를 1회 캡처해요. 프레임워크가 URL 쿼리를 지우기 전에 index.html 인라인
+// 스크립트가 저장해 둔 원본 쿼리스트링(window.__ENTRY_SEARCH)을 읽어요.
+// 공유(room=) 초대가 최우선이고, 없으면 솔로 초대(t/m)를 읽어요.
+const ENTRY: { roomId: string | null; invite: Invite | null } = (() => {
+  if (typeof window === 'undefined') {
+    return { roomId: null, invite: null };
+  }
   const w = window as unknown as { __ENTRY_SEARCH?: string };
-  const invite = parseInvite(w.__ENTRY_SEARCH ?? '');
+  const search = w.__ENTRY_SEARCH ?? '';
   w.__ENTRY_SEARCH = ''; // 한 번만 소비해 새로고침/재마운트 시 재프롬프트를 막아요.
-  return invite;
+  const roomId = parseRoomId(search);
+  return { roomId, invite: roomId != null ? null : parseInvite(search) };
 })();
+const INITIAL_ROOM_ID = ENTRY.roomId;
+const INITIAL_INVITE = ENTRY.invite;
 
 export default function App() {
   // 커스텀 BottomSheet(바닥 연결 슬라이드업)로 여는 시트들의 열림/데이터 상태.
@@ -46,6 +65,18 @@ export default function App() {
     tier: CompletionTier;
   } | null>(null);
 
+  // 공유(함께) 보드 상태. sharedRoomId가 있으면 그 룸을 실시간 구독해요.
+  const { openToast } = useToast();
+  const [sharedRoomId, setSharedRoomId] = useState<string | null>(null);
+  const [sharedRefs, setSharedRefs] = useState<BingoBoard[]>([]);
+  const [isRoomJoinOpen, setIsRoomJoinOpen] = useState(false);
+  const [pendingRoomId, setPendingRoomId] = useState<string | null>(null);
+  const {
+    board: sharedBoard,
+    members: sharedMembers,
+    claim,
+  } = useSharedBoard(sharedRoomId);
+
   // Load persisted boards (Toss Storage in-app, localStorage fallback in browser)
   useEffect(() => {
     (async () => {
@@ -59,9 +90,46 @@ export default function App() {
       } else {
         setBoards(INITIAL_BOARDS);
       }
+
+      const savedRefs = await getStorageItem(SHARED_REFS_KEY);
+      if (savedRefs) {
+        try {
+          setSharedRefs(JSON.parse(savedRefs));
+        } catch {
+          // 손상된 참조는 무시 — 룸을 다시 열면 재생성돼요.
+        }
+      }
+
       setIsLoaded(true);
     })();
   }, []);
+
+  // 공유 보드를 열어 로드되면(생성/참가 둘 다) 대시보드 카드용 참조를 한 번 저장해요.
+  useEffect(() => {
+    if (sharedBoard == null || sharedBoard.roomId == null) {
+      return;
+    }
+    const roomId = sharedBoard.roomId;
+    const title = sharedBoard.title;
+    const emoji = sharedBoard.emoji;
+    setSharedRefs((prev) => {
+      if (prev.some((r) => r.roomId === roomId)) {
+        return prev;
+      }
+      const ref: BingoBoard = {
+        id: `room-${roomId}`,
+        title,
+        emoji,
+        cells: [],
+        shared: true,
+        roomId,
+      };
+      const next = [ref, ...prev];
+      void setStorageItem(SHARED_REFS_KEY, JSON.stringify(next));
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedBoard?.roomId]);
 
   // Persist on every update (fire-and-forget; UI already updated via setBoards)
   const saveBoards = (updatedBoards: BingoBoard[]) => {
@@ -70,8 +138,33 @@ export default function App() {
   };
 
   const handleSelectBoard = (boardId: string) => {
+    // 공유 보드 카드(id가 'room-<uuid>')면 그 룸을 실시간으로 열어요.
+    if (boardId.startsWith('room-')) {
+      setSharedRoomId(boardId.slice('room-'.length));
+      setViewState('board');
+      return;
+    }
+    setSharedRoomId(null);
     setActiveBoardId(boardId);
     setViewState('board');
+  };
+
+  // 공유 보드 칸 인증 — 선착순. 지면 누가 채웠는지 토스트로 알려줘요.
+  const handleSharedComplete = (
+    _boardId: string,
+    cellId: number,
+    photoUrl: string,
+  ) => {
+    void (async () => {
+      try {
+        const result = await claim(cellId, photoUrl);
+        if (!result.claimed) {
+          openToast(`이미 ${result.byNickname}님이 인증한 칸이에요.`);
+        }
+      } catch {
+        openToast('인증에 실패했어요. 잠시 후 다시 시도해 주세요.');
+      }
+    })();
   };
 
   const handleCompleteCell = (
@@ -182,6 +275,56 @@ export default function App() {
 
   const handleCreateNewBoard = () => setIsNewBoardOpen(true);
 
+  // '함께' 룸을 만들고 바로 공유 보드를 열어요.
+  const createSharedRoom = async (draft: NewBoardDraft) => {
+    const nickname = (draft.nickname ?? '').trim() || '익명';
+    try {
+      await setNickname(nickname);
+      const input =
+        draft.type === 'custom'
+          ? { title: draft.name, emoji: '📸', missions: draft.missions }
+          : {
+              title: draft.name,
+              emoji: (
+                BOARD_TEMPLATES.find((t) => t.id === draft.templateId) ??
+                BOARD_TEMPLATES[0]
+              ).emoji,
+              templateId: draft.templateId,
+            };
+      const roomId = await createRoom(input, nickname);
+      setSharedRoomId(roomId);
+      setViewState('board');
+    } catch (e) {
+      openToast(e instanceof Error ? e.message : '함께 보드를 만들지 못했어요.');
+    }
+  };
+
+  // 새 보드 생성 — 함께면 룸 생성, 혼자면 로컬 보드 생성으로 분기해요.
+  const handleSubmitNewBoard = async (draft: NewBoardDraft) => {
+    setIsNewBoardOpen(false);
+    if (draft.shared === true) {
+      await createSharedRoom(draft);
+      return;
+    }
+    if (draft.type === 'custom') {
+      createCustomBoard(draft.name, draft.missions);
+    } else {
+      createBoardFromTemplate(draft.templateId, draft.name);
+    }
+  };
+
+  // 룸 초대(room=) 링크로 들어와 참가 — 닉네임을 저장하고 공유 보드를 열어요(훅이 참가 처리).
+  const handleJoinRoom = async (nickname: string) => {
+    if (pendingRoomId == null) {
+      return;
+    }
+    const nick = nickname.trim() || '익명';
+    await setNickname(nick);
+    setIsRoomJoinOpen(false);
+    setSharedRoomId(pendingRoomId);
+    setViewState('board');
+  };
+
   // '같은 챌린지 함께 시작' — 친구가 공유한 딥링크로 들어오면 같은 보드를 내 폰에 만들지 물어봐요.
   const openInviteSheet = (invite: Invite) => {
     setPendingInvite(invite);
@@ -234,6 +377,18 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded]);
 
+  // 진입 딥링크에 공유 룸 초대(room=)가 있으면 참가 시트를 한 번만 띄워요.
+  const roomPromptedRef = useRef(false);
+  useEffect(() => {
+    if (!isLoaded || INITIAL_ROOM_ID == null || roomPromptedRef.current) {
+      return;
+    }
+    roomPromptedRef.current = true;
+    setPendingRoomId(INITIAL_ROOM_ID);
+    setIsRoomJoinOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded]);
+
   const handleClearGallery = () => {
     saveBoards(INITIAL_BOARDS);
     setViewState('dashboard');
@@ -249,6 +404,8 @@ export default function App() {
   };
 
   const activeBoard = boards.find((b) => b.id === activeBoardId) || boards[0];
+  // 대시보드 목록 = 공유 룸 참조(맨 위) + 로컬(솔로) 보드.
+  const allBoards = [...sharedRefs, ...boards];
 
   const renderActiveView = () => {
     if (!activeBoard && boards.length > 0) return null;
@@ -257,13 +414,38 @@ export default function App() {
       case 'dashboard':
         return (
           <DashboardView
-            boards={boards}
+            boards={allBoards}
             onSelectBoard={handleSelectBoard}
             onCreateNewBoard={handleCreateNewBoard}
             onNavigate={(view) => setViewState(view)}
           />
         );
       case 'board':
+        if (sharedRoomId != null) {
+          if (sharedBoard == null) {
+            return (
+              <div className="min-h-screen flex items-center justify-center bg-white p-6">
+                <div className="animate-spin text-blue-600 font-bold">
+                  함께 보드 여는 중...
+                </div>
+              </div>
+            );
+          }
+          return (
+            <BoardDetailView
+              board={sharedBoard}
+              members={sharedMembers}
+              earnedBadgeIds={computeEarnedBadgeIds(boards)}
+              onBack={() => {
+                setSharedRoomId(null);
+                setViewState('dashboard');
+              }}
+              onCompleteCell={handleSharedComplete}
+              onDeleteBoard={() => {}}
+              onNavigate={(view) => setViewState(view)}
+            />
+          );
+        }
         return activeBoard ? (
           <BoardDetailView
             board={activeBoard}
@@ -275,7 +457,7 @@ export default function App() {
           />
         ) : (
           <DashboardView
-            boards={boards}
+            boards={allBoards}
             onSelectBoard={handleSelectBoard}
             onCreateNewBoard={handleCreateNewBoard}
             onNavigate={(view) => setViewState(view)}
@@ -292,7 +474,7 @@ export default function App() {
           />
         ) : (
           <DashboardView
-            boards={boards}
+            boards={allBoards}
             onSelectBoard={handleSelectBoard}
             onCreateNewBoard={handleCreateNewBoard}
             onNavigate={(view) => setViewState(view)}
@@ -307,7 +489,7 @@ export default function App() {
           />
         ) : (
           <DashboardView
-            boards={boards}
+            boards={allBoards}
             onSelectBoard={handleSelectBoard}
             onCreateNewBoard={handleCreateNewBoard}
             onNavigate={(view) => setViewState(view)}
@@ -324,7 +506,7 @@ export default function App() {
       default:
         return (
           <DashboardView
-            boards={boards}
+            boards={allBoards}
             onSelectBoard={handleSelectBoard}
             onCreateNewBoard={handleCreateNewBoard}
             onNavigate={(view) => setViewState(view)}
@@ -350,12 +532,7 @@ export default function App() {
       >
         <NewBoardForm
           onSubmit={(draft) => {
-            if (draft.type === 'custom') {
-              createCustomBoard(draft.name, draft.missions);
-            } else {
-              createBoardFromTemplate(draft.templateId, draft.name);
-            }
-            setIsNewBoardOpen(false);
+            void handleSubmitNewBoard(draft);
           }}
           onCancel={() => setIsNewBoardOpen(false)}
         />
@@ -375,6 +552,19 @@ export default function App() {
             onDismiss={() => setIsInviteOpen(false)}
           />
         )}
+      </BottomSheet>
+
+      <BottomSheet
+        open={isRoomJoinOpen}
+        onClose={() => setIsRoomJoinOpen(false)}
+        title="함께 하기 초대"
+      >
+        <RoomJoinSheet
+          onJoin={(nick) => {
+            void handleJoinRoom(nick);
+          }}
+          onDismiss={() => setIsRoomJoinOpen(false)}
+        />
       </BottomSheet>
     </div>
   );

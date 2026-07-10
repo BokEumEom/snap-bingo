@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { TextField, Button } from '@toss/tds-mobile';
+import { useState, useEffect } from 'react';
+import { TextField, Button, SegmentedControl } from '@toss/tds-mobile';
 import { BOARD_TEMPLATES } from '../data';
 import { NewBoardDraft } from '../types';
+import { getNickname } from '../lib/identity';
 import Emoji from './Emoji';
 import SheetFooter from './SheetFooter';
 
@@ -35,9 +36,23 @@ export default function NewBoardForm({ onSubmit, onCancel }: NewBoardFormProps) 
   const [name, setName] = useState(OPTIONS[0].label);
   const [nameTouched, setNameTouched] = useState(false);
   const [missions, setMissions] = useState<string[]>(() => Array(9).fill(''));
+  // 혼자(솔로) / 함께(실시간 공동 룸). 함께면 화면에 표시될 내 이름(닉네임)을 함께 받아요.
+  const [mode, setMode] = useState<'solo' | 'together'>('solo');
+  const [nickname, setNickname] = useState('');
+
+  useEffect(() => {
+    void (async () => {
+      const saved = await getNickname();
+      if (saved != null) {
+        setNickname(saved);
+      }
+    })();
+  }, []);
 
   const isCustom = selectedId === CUSTOM_ID;
+  const isTogether = mode === 'together';
   const trimmedName = name.trim();
+  const trimmedNickname = nickname.trim();
 
   // 옵션을 바꾸면 사용자가 이름을 아직 손대지 않은 경우에만 기본 이름을 채워요('직접 만들기'는 비움).
   const handleSelectOption = (id: string) => {
@@ -58,19 +73,41 @@ export default function NewBoardForm({ onSubmit, onCancel }: NewBoardFormProps) 
   };
 
   const handleCreate = () => {
-    if (trimmedName === '') {
+    if (trimmedName === '' || (isTogether && trimmedNickname === '')) {
       return;
     }
+    const shared = isTogether;
+    const nick = isTogether ? trimmedNickname : undefined;
     if (isCustom) {
-      onSubmit({ type: 'custom', name: trimmedName, missions });
+      onSubmit({ type: 'custom', name: trimmedName, missions, shared, nickname: nick });
     } else {
-      onSubmit({ type: 'template', templateId: selectedId, name: trimmedName });
+      onSubmit({
+        type: 'template',
+        templateId: selectedId,
+        name: trimmedName,
+        shared,
+        nickname: nick,
+      });
     }
   };
 
   return (
     <div>
       <div style={{ padding: '0 24px' }}>
+        {/* 혼자 / 함께 선택 — 함께면 실시간 공동 룸으로 만들어요. */}
+        <SegmentedControl
+          value={mode}
+          onChange={(v) => setMode(v as 'solo' | 'together')}
+        >
+          <SegmentedControl.Item value="solo">혼자</SegmentedControl.Item>
+          <SegmentedControl.Item value="together">함께</SegmentedControl.Item>
+        </SegmentedControl>
+        <p className="text-[11px] text-neutral-500 mt-2 mb-4">
+          {isTogether
+            ? '친구와 한 판을 실시간으로 같이 채워요. 각 칸은 먼저 인증한 사람이 차지해요.'
+            : '나 혼자 채우는 빙고예요.'}
+        </p>
+
         <p className="text-xs font-bold text-neutral-500 mb-2">테마 선택</p>
         <div className="flex flex-col gap-2 mb-5">
         {OPTIONS.map((option) => {
@@ -110,6 +147,19 @@ export default function NewBoardForm({ onSubmit, onCancel }: NewBoardFormProps) 
         onChange={(e) => handleNameChange(e.target.value)}
       />
 
+      {isTogether && (
+        <div className="mt-4">
+          <TextField
+            variant="box"
+            label="내 이름 (함께 화면에 표시돼요)"
+            labelOption="sustain"
+            placeholder="예: 김토스"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value.slice(0, 12))}
+          />
+        </div>
+      )}
+
       {isCustom && (
         <div className="mt-4">
           <p className="text-xs font-bold text-neutral-500 mb-2">
@@ -147,10 +197,12 @@ export default function NewBoardForm({ onSubmit, onCancel }: NewBoardFormProps) 
             <Button
               display="block"
               size="large"
-              disabled={trimmedName === ''}
+              disabled={
+                trimmedName === '' || (isTogether && trimmedNickname === '')
+              }
               onClick={handleCreate}
             >
-              만들기
+              {isTogether ? '함께 만들기' : '만들기'}
             </Button>
           </div>
         </div>
