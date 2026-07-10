@@ -4,6 +4,7 @@ import { BingoBoard, NavKey } from '../types';
 import { APP_ICON } from '../data';
 import { shareApp } from '../lib/share';
 import LucideIcon from './LucideIcon';
+import Emoji from './Emoji';
 import HeroCarousel from './HeroCarousel';
 import BottomNav from './BottomNav';
 
@@ -97,7 +98,7 @@ export default function DashboardView({
                 >
                   {/* Board Icon */}
                   <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 bg-blue-50 text-blue-600">
-                    <span className="text-2xl">{board.emoji}</span>
+                    <Emoji emoji={board.emoji} size={32} alt="" />
                     {earned && (
                       <span
                         className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-amber-400 text-white rounded-full flex items-center justify-center border-2 border-surface shadow-sm"

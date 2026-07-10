@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TextField, Button } from '@toss/tds-mobile';
 import { BOARD_TEMPLATES } from '../data';
 import { NewBoardDraft } from '../types';
+import Emoji from './Emoji';
 
 interface NewBoardFormProps {
   onSubmit: (draft: NewBoardDraft) => void;
@@ -84,9 +85,7 @@ export default function NewBoardForm({ onSubmit, onCancel }: NewBoardFormProps) 
                   : 'border-hairline bg-surface hover:bg-neutral-50'
               }`}
             >
-              <span className="text-2xl flex-shrink-0" aria-hidden="true">
-                {option.emoji}
-              </span>
+              <Emoji emoji={option.emoji} size={28} className="flex-shrink-0" alt="" />
               <span className="min-w-0">
                 <span className="block text-sm font-bold text-neutral-900 truncate">
                   {option.label}

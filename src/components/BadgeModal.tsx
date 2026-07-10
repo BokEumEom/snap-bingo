@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { Button } from '@toss/tds-mobile';
 import { Badge } from '../types';
+import Emoji from './Emoji';
 
 interface BadgeModalProps {
   badge: Badge;
@@ -25,8 +26,8 @@ export default function BadgeModal({ badge, onClose }: BadgeModalProps) {
           <X size={18} />
         </button>
 
-        <div className="w-24 h-24 rounded-full bg-neutral-100/60 border border-hairline shadow-sm flex items-center justify-center text-5xl mt-2">
-          <span>{badge.emoji}</span>
+        <div className="w-24 h-24 rounded-full bg-neutral-100/60 border border-hairline shadow-sm flex items-center justify-center mt-2">
+          <Emoji emoji={badge.emoji} size={56} alt={badge.name} />
         </div>
 
         <p className="text-xs font-bold text-blue-600 mt-5">획득 완료</p>

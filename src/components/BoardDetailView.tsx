@@ -7,6 +7,7 @@ import { BADGES } from '../data';
 import { shareBoardInvite } from '../lib/share';
 import UploadModal from './UploadModal';
 import BadgeModal from './BadgeModal';
+import Emoji from './Emoji';
 
 interface BoardDetailViewProps {
   board: BingoBoard;
@@ -169,8 +170,8 @@ export default function BoardDetailView({
                 <>
                   {/* Empty Cell */}
                   <div className="w-full h-full bg-neutral-50/50 border-2 border-dashed border-neutral-200/80 rounded-2xl p-2 flex flex-col items-center justify-center text-center hover:bg-neutral-100/50 transition-colors">
-                    <div className="mb-1.5 text-xl leading-none" aria-hidden="true">
-                      {cell.icon}
+                    <div className="mb-1.5 leading-none" aria-hidden="true">
+                      <Emoji emoji={cell.icon} size={24} alt="" />
                     </div>
                     <p className="text-[10px] font-bold text-neutral-500 group-hover:text-neutral-700 leading-tight">{cell.title}</p>
                   </div>
@@ -201,7 +202,7 @@ export default function BoardDetailView({
                       earned ? '' : 'opacity-40 grayscale'
                     }`}
                   >
-                    <span>{badge.emoji}</span>
+                    <Emoji emoji={badge.emoji} size={36} alt={badge.name} />
                     {!earned && (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <Lock size={16} className="text-neutral-400" />

@@ -5,6 +5,7 @@ import { BingoBoard } from '../types';
 import { APP_ICON } from '../data';
 import { shareApp } from '../lib/share';
 import { countBingoLines } from '../lib/badges';
+import Emoji from './Emoji';
 
 interface BingoAchievementViewProps {
   board: BingoBoard;
@@ -125,7 +126,7 @@ export default function BingoAchievementView({
           {/* Card Footer */}
           <div className="flex justify-between items-center gap-2 pt-4 border-t border-hairline">
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-base flex-shrink-0">{board.emoji}</span>
+              <Emoji emoji={board.emoji} size={18} className="flex-shrink-0" alt="" />
               <span className="text-xs font-bold text-neutral-800 truncate">{board.title}</span>
             </div>
             <p className="text-[11px] font-extrabold text-blue-600 flex-shrink-0">찍고빙고</p>

@@ -38,7 +38,7 @@ export const BOARD_TEMPLATES: BoardTemplate[] = [
       { title: '반짝이는 야경', icon: '🌃' },
       { title: '기념품', icon: '🎁' },
       { title: '인생 포토스팟', icon: '📸' },
-      { title: '다 함께 단체샷', icon: '👨‍👩‍👧‍👦' },
+      { title: '다 함께 단체샷', icon: '👪' },
     ],
   },
   {
