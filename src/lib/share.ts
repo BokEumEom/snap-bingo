@@ -1,7 +1,5 @@
 import { getTossShareLink, share } from '@apps-in-toss/web-framework';
 
-import config from '../../granite.config';
-import { APP_ICON } from '../data';
 import { BingoBoard } from '../types';
 import { encodeInviteParams } from './invite';
 
@@ -10,18 +8,34 @@ import { encodeInviteParams } from './invite';
 const DEEP_LINK = 'intoss://snap-bingo';
 const DEFAULT_MESSAGE = '찍고빙고에서 여름 사진 빙고를 함께 채워요! 📸';
 
-// SNS 공유 프리뷰(카카오톡 등)에 노출될 OG 이미지. 외부 크롤러가 가져가야 하므로
-// 반드시 공개된 절대 URL이어야 한다(상대경로/로컬 dev URL은 프리뷰가 안 뜸).
-// 앱의 실제 아이콘(APP_ICON = image_10.png)을 배포 오리진 기준 절대 URL로 만들어 사용한다.
-// (예전엔 config.brand.icon 목업 placeholder를 써서 실제 앱 아이콘과 다른 그림이 프리뷰에 떴다.)
-// 화면별로 다른 이미지를 넘겨 덮어쓸 수 있다.
-// TODO(app-in-toss): 콘솔 등록 후 1200×630 권장 규격의 전용 랜드스케이프 OG 이미지로 교체.
+// 공유 프리뷰(카카오톡·SNS) 카드에 노출될 OG 이미지예요. 토스 링크 프리뷰 크롤러가
+// `getTossShareLink(url, ogImageUrl)`의 ogImageUrl을 가져가 그리므로, 반드시 **공개된
+// https 절대 URL**이어야 하고 OG 권장 규격은 **1200×600(2:1)**이에요(앱인토스 OG 가이드).
+// 규격에 맞는 전용 커버를 `public/og-cover.png`(1200×600, 실제 앱 아이콘+이름)로 준비해 뒀어요.
+//
+// 우선순위:
+//  (1) `VITE_OG_IMAGE_URL` — 콘솔 등록 후 발급받은 CDN/배포 공개 URL을 빌드 시 주입하면
+//      코드 수정 없이 교체돼요(.env.example 참고).
+//  (2) 배포 오리진 기준 절대 URL — 자동으로 실제 배포 https 오리진의 `/og-cover.png`를 써요.
+//      dev/샌드박스의 http·localhost 오리진에선 크롤러가 못 가져가 프리뷰가 안 뜨는 게 정상이에요.
+//
+// (예전엔 런타임 오리진에서 정사각 앱 아이콘 `image_10.png`(1254×1254)를 그대로 넘겨 규격(2:1)과
+//  어긋났고, 오리진 의존이라 dev에서 프리뷰가 아예 안 떴어요.)
+// 호출부에서 화면별로 다른 이미지를 넘겨 덮어쓸 수도 있어요.
+const OG_IMAGE_ASSET = '/og-cover.png';
+const CONFIGURED_OG_IMAGE_URL = import.meta.env.VITE_OG_IMAGE_URL;
+
 function defaultOgImageUrl(): string {
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return new URL(APP_ICON, window.location.origin).href;
+  // (1) 빌드 타임에 주입한 공개 https OG URL이 최우선.
+  if (CONFIGURED_OG_IMAGE_URL != null && CONFIGURED_OG_IMAGE_URL !== '') {
+    return CONFIGURED_OG_IMAGE_URL;
   }
-  // 비브라우저(SSR 등) 폴백 — 런타임 웹뷰에서는 위에서 항상 절대 URL을 만든다.
-  return config.brand.icon;
+  // (2) 배포 오리진 기준 절대 URL(자동으로 실제 https 오리진 사용).
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return new URL(OG_IMAGE_ASSET, window.location.origin).href;
+  }
+  // (3) 비브라우저(SSR 등) 폴백.
+  return OG_IMAGE_ASSET;
 }
 
 // 브라우저(브리지 없음)에서 링크 생성이 reject 대신 hang할 수 있어 타임아웃으로 폴백을 보장한다.
