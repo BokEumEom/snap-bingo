@@ -5,6 +5,8 @@ export interface BingoCell {
   completed: boolean;
   photoUrl?: string;
   dateCompleted?: string;
+  // 공유(함께) 보드에서 이 칸을 채운 사람. 솔로 보드에선 항상 undefined예요.
+  completedBy?: { uid: string; nickname: string };
 }
 
 // 새 보드를 만들 때 고르는 여름 테마. 공식 챌린지 가이드(여행·피서·미식·건강)에 매핑돼요.
@@ -29,6 +31,8 @@ export interface BingoBoard {
   cells: BingoCell[];
   eyebrow?: string; // 보드 상세 상단 라벨 (예: '여름 미식 챌린지'). 템플릿에서 채워져요.
   templateId?: string; // 템플릿에서 만든 보드의 원본 템플릿 id. '함께 시작' 초대 링크를 온전히 재현해요.
+  roomId?: string; // 공유(함께) 보드면 Supabase 룸 id. 있으면 실시간 공동 편집 보드예요.
+  shared?: boolean; // 공유 보드 여부(roomId와 함께 세팅돼요).
 }
 
 export type ViewState =
