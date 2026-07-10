@@ -19,15 +19,17 @@ interface BottomNavProps {
   onNavigate: (view: NavKey) => void;
 }
 
-// BottomNavSample의 글래스모피즘 디자인 스타일을 적용해요: 화면 하단 풀블리드 반투명+블러 바,
-// 위쪽 그라데이션 페이드로 콘텐츠가 바 아래로 부드럽게 사라지고, 활성 탭은 검정 라운드 pill 안의
-// 흰색 채운 아이콘, 비활성은 회색 아웃라인 아이콘이에요. 색은 앱 adaptive 토큰으로 맞춰
-// 다크모드까지 대응하고, 아이콘 전용이라 접근성용 aria-label을 붙여요.
+// 글래스모피즘 바(화면 하단 풀블리드 반투명+블러, 위쪽 그라데이션 페이드)예요. 활성 탭은
+// 검정 pill 대신 **앱 브랜드 블루(#3182f6, blue-600)로 칠한 아웃라인 아이콘**, 비활성은
+// 회색(neutral-400) 아웃라인으로 톤을 앱 accent와 일관되게 맞췄어요. (예전엔 검정 pill이라
+// 갤러리 아이콘이 검정 사각 블록처럼 보였고, fill로 채우면 lucide Image가 안쪽 선이 묻혀 파란
+// 사각 블록으로 뭉개져서 — browse로 확인 — 채우지 않고 색만 바꿔요.) 색은 adaptive/brand
+// 토큰이라 다크모드까지 대응하고, 아이콘 전용이라 접근성용 aria-label을 붙여요.
 export default function BottomNav({ current, onNavigate }: BottomNavProps) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40">
       {/* 콘텐츠가 바 아래로 부드럽게 사라지도록 하는 상단 그라데이션 페이드 */}
-      <div className="h-12 w-full bg-gradient-to-t from-page to-transparent pointer-events-none" />
+      <div className="h-12 w-full bg-linear-to-t from-page to-transparent pointer-events-none" />
 
       {/* 글래스모피즘 바 */}
       <nav
@@ -49,13 +51,16 @@ export default function BottomNav({ current, onNavigate }: BottomNavProps) {
               aria-current={isActive ? 'page' : undefined}
               className="flex items-center justify-center w-16 h-14 active:opacity-70 transition-opacity"
             >
-              {isActive ? (
-                <span className="bg-neutral-900 p-2.5 rounded-2xl shadow-sm">
-                  <Icon size={24} className="text-white" fill="white" />
-                </span>
-              ) : (
-                <Icon size={28} className="text-neutral-400" strokeWidth={2} />
-              )}
+              {/* 활성=브랜드 블루, 비활성=회색. 둘 다 아웃라인이라 갤러리(Image) 아이콘이 꽉 찬
+                  사각 블록으로 뭉개지지 않고, 활성은 색+약간 굵은 stroke로만 구분해요. 같은
+                  size(26)라 전환 시 레이아웃 점프도 없어요. */}
+              <Icon
+                size={26}
+                strokeWidth={isActive ? 2.5 : 2}
+                className={`transition-colors ${
+                  isActive ? 'text-blue-600' : 'text-neutral-400'
+                }`}
+              />
             </button>
           );
         })}
