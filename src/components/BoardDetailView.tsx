@@ -19,6 +19,8 @@ interface BoardDetailViewProps {
   onNavigate: (view: NavKey | 'achievement') => void;
   // 공유(함께) 보드일 때 참가자 목록. 있으면 멤버 줄과 칸별 인증자 칩을 보여줘요.
   members?: { uid: string; nickname: string }[];
+  // 공유 보드 전용 — '나가기'(내 목록에서 제거). 있으면 삭제 대신 나가기 버튼을 보여줘요.
+  onLeaveBoard?: () => void;
 }
 
 export default function BoardDetailView({
@@ -28,7 +30,8 @@ export default function BoardDetailView({
   onCompleteCell,
   onDeleteBoard,
   onNavigate,
-  members = []
+  members = [],
+  onLeaveBoard
 }: BoardDetailViewProps) {
   const shared = board.shared === true;
   const { openToast } = useToast();
@@ -45,6 +48,17 @@ export default function BoardDetailView({
       cancelButton: '취소',
     });
     if (ok) onDeleteBoard(board.id);
+  };
+
+  // 함께 보드 나가기 — 방을 삭제하지 않고 내 목록(대시보드)에서만 빼요. 초대 링크로 재참가 가능.
+  const handleLeave = async () => {
+    const ok = await openConfirm({
+      title: '이 함께 보드에서 나갈까요?',
+      description: '내 목록에서 사라져요. 초대 링크로 언제든 다시 참가할 수 있어요.',
+      confirmButton: '나가기',
+      cancelButton: '취소',
+    });
+    if (ok) onLeaveBoard?.();
   };
 
   // 친구 초대 — 공유 보드면 같은 룸에 실시간으로 참가하는 링크, 솔로면 각자 채우는 링크를 공유해요.
@@ -260,17 +274,24 @@ export default function BoardDetailView({
           </Post.Ol>
         </section>
 
-        {/* Delete board — 공유 보드에선 숨겨요(여럿이 함께 쓰는 판이라 개인이 삭제하지 않아요). */}
-        {!shared && (
-          <section className="pt-1">
+        {/* 솔로 보드는 '삭제', 함께 보드는 '나가기'(내 목록에서 제거) — 함께 판을 개인이 삭제하지 않아요. */}
+        <section className="pt-1">
+          {shared ? (
+            <button
+              onClick={handleLeave}
+              className="w-full text-center text-xs font-semibold text-neutral-500 py-3 rounded-2xl! hover:bg-neutral-100/60 active:scale-[0.98] transition-all"
+            >
+              이 함께 보드에서 나가기
+            </button>
+          ) : (
             <button
               onClick={handleDelete}
               className="w-full text-center text-xs font-semibold text-rose-500 py-3 rounded-2xl! hover:bg-rose-50/60 active:scale-[0.98] transition-all"
             >
               이 보드 삭제하기
             </button>
-          </section>
-        )}
+          )}
+        </section>
 
       </main>
 

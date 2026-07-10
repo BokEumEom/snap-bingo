@@ -403,6 +403,17 @@ export default function App() {
     setViewState('dashboard');
   };
 
+  // 함께 보드 나가기 — 방은 그대로 두고 내 로컬 목록(참조)에서만 제거하고 대시보드로 돌아가요.
+  const handleLeaveSharedBoard = (roomId: string) => {
+    setSharedRefs((prev) => {
+      const next = prev.filter((r) => r.roomId !== roomId);
+      void setStorageItem(SHARED_REFS_KEY, JSON.stringify(next));
+      return next;
+    });
+    setSharedRoomId(null);
+    setViewState('dashboard');
+  };
+
   const activeBoard = boards.find((b) => b.id === activeBoardId) || boards[0];
   // 대시보드 목록 = 공유 룸 참조(맨 위) + 로컬(솔로) 보드.
   const allBoards = [...sharedRefs, ...boards];
@@ -422,6 +433,7 @@ export default function App() {
         );
       case 'board':
         if (sharedRoomId != null) {
+          const rid = sharedRoomId;
           if (sharedBoard == null) {
             return (
               <div className="min-h-screen flex items-center justify-center bg-white p-6">
@@ -442,6 +454,7 @@ export default function App() {
               }}
               onCompleteCell={handleSharedComplete}
               onDeleteBoard={() => {}}
+              onLeaveBoard={() => handleLeaveSharedBoard(rid)}
               onNavigate={(view) => setViewState(view)}
             />
           );
