@@ -86,7 +86,7 @@ npm run deploy     # ait deploy
 ## 알려진 제약 (출시 전 정리 필요)
 
 - **제출 에셋** — `granite.config.ts`의 `brand.icon`은 임시 플레이스홀더예요. 콘솔에 600×600 로고를 업로드하고 발급 URL로 교체해야 해요. 썸네일/스크린샷도 필요해요.
-- **공유 OG 이미지** — 초대/공유 링크 프리뷰 카드는 `public/og-cover.png`(1200×600, 2:1 규격)를 써요. 토스 링크 프리뷰 크롤러는 **공개 https 절대 URL**만 가져가므로, dev/샌드박스(http·localhost)에선 프리뷰가 안 뜨는 게 정상이에요. 콘솔 등록 후 CDN/배포 공개 URL을 발급받으면 `.env`의 `VITE_OG_IMAGE_URL`에 넣어 코드 수정 없이 교체하세요(비우면 배포 오리진 기준 `/og-cover.png` 자동 사용). 자세한 건 `.env.example` 참고. 소스: `src/lib/share.ts`.
+- **공유 OG 이미지** — 초대/공유 링크 프리뷰 카드는 `public/og-cover.png`(1200×600, 2:1 규격)를 써요. 토스 링크 프리뷰 크롤러는 **공개 https 절대 URL**만 가져가요. 기본값은 저장소의 커버를 **jsDelivr(GitHub CDN)** 로 서빙하는 공개 URL(`src/lib/share.ts`의 `DEFAULT_OG_IMAGE_URL`)이라, **앱 출시(tossmini 도메인 라이브) 전에도** 프리뷰가 떠요. ⚠️ 이 URL은 **저장소가 public**이어야 열려요(private면 404 → 프리뷰 안 뜸). 이미지를 다른 CDN/에셋 repo로 옮기면 `.env`의 `VITE_OG_IMAGE_URL`로 코드 수정 없이 덮어쓰세요(`.env.example` 참고). 소스: `src/lib/share.ts`.
 - **라이트 모드 고정** — `TDSMobileAITProvider`가 `colorPreference:"light"`를 고정해 다크 모드는 현재 미지원이에요.
 - **인증 방식** — 사진 '인증'은 실제 콘텐츠 검증이 아니라, 업로드한 이미지를 그 칸의 인증 사진으로 등록하는 방식이에요(부적절 이미지 필터링 없음).
 - **실기기 검증 잔여** — 공유 딥링크가 실제 앱을 여는지, 네이티브 `Storage` read/write는 콘솔 등록 후 샌드박스/테스트앱에서 확인이 필요해요.
