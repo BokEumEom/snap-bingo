@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Camera, Check, Lock, UserPlus } from 'lucide-react';
+import { ArrowLeft, Camera, Check, Lock, UserPlus, Pencil } from 'lucide-react';
 import { useToast, useDialog, Badge, ProgressBar, Post } from '@toss/tds-mobile';
 import { adaptive } from '@toss/tds-colors';
 import { BingoBoard, BingoCell, NavKey, Badge as BadgeItem } from '../types';
@@ -8,6 +8,7 @@ import { shareBoardInvite, shareRoomInvite } from '../lib/share';
 import UploadModal from './UploadModal';
 import BottomSheet from './BottomSheet';
 import BadgeModal from './BadgeModal';
+import NicknameEditSheet from './NicknameEditSheet';
 import Emoji from './Emoji';
 
 interface BoardDetailViewProps {
@@ -25,6 +26,12 @@ interface BoardDetailViewProps {
   onLeaveBoard?: () => void;
   // 공유 보드 방장 전용 — '삭제'(DB에서 방 전체 제거, 모든 참가자에게서 사라짐).
   onDeleteSharedBoard?: () => void;
+  // 함께 보드에서 '나'를 식별해요(내 멤버 칩 편집·내 칸 사진 교체 판정용).
+  myUid?: string | null;
+  // 함께 보드 — 이 방에서 내 이름(멤버 닉네임)을 바꿔요.
+  onEditNickname?: (nickname: string) => void;
+  // 내가 인증한 칸의 사진을 교체해요(솔로: 로컬 갱신, 함께: 내 칸만).
+  onChangePhoto?: (boardId: string, cellId: number, photoUrl: string) => void;
 }
 
 export default function BoardDetailView({
@@ -37,7 +44,10 @@ export default function BoardDetailView({
   members = [],
   isOwner = false,
   onLeaveBoard,
-  onDeleteSharedBoard
+  onDeleteSharedBoard,
+  myUid,
+  onEditNickname,
+  onChangePhoto
 }: BoardDetailViewProps) {
   const shared = board.shared === true;
   const { openToast } = useToast();
@@ -45,6 +55,12 @@ export default function BoardDetailView({
   // 사진 인증 시트(커스텀 BottomSheet). uploadCell은 닫힘 애니메이션 동안 유지되도록 open과 분리.
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadCell, setUploadCell] = useState<BingoCell | null>(null);
+  // 업로드 시트가 '새 인증(claim)'인지 '사진 교체(change)'인지 구분해요.
+  const [uploadMode, setUploadMode] = useState<'complete' | 'change'>(
+    'complete',
+  );
+  // 함께 방 이름(내 멤버 닉네임) 편집 시트.
+  const [isNickOpen, setIsNickOpen] = useState(false);
 
   const handleDelete = async () => {
     const ok = await openConfirm({
@@ -88,24 +104,41 @@ export default function BoardDetailView({
   const totalCount = board.cells.length;
 
   // 홈의 "새 챌린지 만들기"와 동일하게 커스텀 BottomSheet를 아래에서 위로 올려 사진 인증을 받아요.
-  const openUploadSheet = (cell: BingoCell) => {
+  const openUploadSheet = (cell: BingoCell, mode: 'complete' | 'change') => {
     setUploadCell(cell);
+    setUploadMode(mode);
     setIsUploadOpen(true);
   };
 
+  // 내가 사진을 다룰 수 있는 칸인지 — 빈 칸(새 인증)은 항상, 완료 칸은 '내 칸'만.
+  // 솔로 보드의 완료 칸은 모두 내 것이라 교체 가능, 함께 보드는 completedBy가 나일 때만.
+  const canEditCell = (cell: BingoCell) => {
+    if (!cell.completed) return true;
+    if (!shared) return true;
+    return myUid != null && cell.completedBy?.uid === myUid;
+  };
+
   const handleCellClick = (cell: BingoCell) => {
-    if (cell.completed) {
-      openToast(`'${cell.title}'은(는) 이미 인증 완료했어요. (${cell.dateCompleted})`);
-    } else {
-      openUploadSheet(cell);
+    if (!cell.completed) {
+      openUploadSheet(cell, 'complete');
+      return;
     }
+    if (canEditCell(cell)) {
+      // 이미 인증한 내 칸 → 사진 교체(솔로/내 함께 칸).
+      openUploadSheet(cell, 'change');
+      return;
+    }
+    // 함께 보드에서 남이 이미 채운 칸.
+    openToast(
+      `이미 ${cell.completedBy?.nickname ?? '다른 분'}님이 인증한 칸이에요.`,
+    );
   };
 
   const handleFabClick = () => {
     // Find first incomplete cell
     const firstIncomplete = board.cells.find(c => !c.completed);
     if (firstIncomplete) {
-      openUploadSheet(firstIncomplete);
+      openUploadSheet(firstIncomplete, 'complete');
     } else {
       openToast('모든 미션을 완료했어요! 상단의 인증 현황에서 확인해 보세요.');
     }
@@ -166,14 +199,31 @@ export default function BoardDetailView({
             <span className="text-xs font-bold text-neutral-500">
               함께 {members.length}명
             </span>
-            {members.map((m) => (
-              <span
-                key={m.uid}
-                className="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 text-[11px] font-bold"
-              >
-                {m.nickname}
-              </span>
-            ))}
+            {members.map((m) => {
+              const isMe = myUid != null && m.uid === myUid;
+              // 내 칩은 눌러서 이 방에서 쓸 이름을 바꿀 수 있어요.
+              if (isMe && onEditNickname != null) {
+                return (
+                  <button
+                    key={m.uid}
+                    onClick={() => setIsNickOpen(true)}
+                    aria-label="내 이름 편집"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-600 text-white text-[11px] font-bold active:scale-95 transition-transform"
+                  >
+                    {m.nickname}
+                    <Pencil size={11} />
+                  </button>
+                );
+              }
+              return (
+                <span
+                  key={m.uid}
+                  className="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 text-[11px] font-bold"
+                >
+                  {m.nickname}
+                </span>
+              );
+            })}
           </div>
         )}
 
@@ -329,7 +379,11 @@ export default function BoardDetailView({
       <BottomSheet
         open={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
-        title={uploadCell ? `${uploadCell.title} 인증` : undefined}
+        title={
+          uploadCell
+            ? `${uploadCell.title} ${uploadMode === 'change' ? '사진 바꾸기' : '인증'}`
+            : undefined
+        }
       >
         {uploadCell && (
           <UploadModal
@@ -340,11 +394,35 @@ export default function BoardDetailView({
             onClose={() => setIsUploadOpen(false)}
             onUploadSuccess={(photoUrl) => {
               setIsUploadOpen(false);
-              onCompleteCell(board.id, uploadCell.id, photoUrl);
+              if (uploadMode === 'change') {
+                onChangePhoto?.(board.id, uploadCell.id, photoUrl);
+              } else {
+                onCompleteCell(board.id, uploadCell.id, photoUrl);
+              }
             }}
           />
         )}
       </BottomSheet>
+
+      {/* 함께 방 — 내 이름(멤버 닉네임) 편집 시트 */}
+      {onEditNickname != null && (
+        <BottomSheet
+          open={isNickOpen}
+          onClose={() => setIsNickOpen(false)}
+          title="이름 바꾸기"
+        >
+          <NicknameEditSheet
+            currentNickname={
+              members.find((m) => m.uid === myUid)?.nickname ?? ''
+            }
+            onSave={(nick) => {
+              setIsNickOpen(false);
+              onEditNickname(nick);
+            }}
+            onDismiss={() => setIsNickOpen(false)}
+          />
+        </BottomSheet>
+      )}
 
     </div>
   );

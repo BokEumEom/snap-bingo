@@ -10,6 +10,7 @@ import {
   setCellThumb,
   subscribeRoom,
   roomStillExists,
+  updateMyNickname,
   type RoomState,
   type RoomRow,
 } from '../lib/room';
@@ -35,6 +36,10 @@ export interface SharedBoardState {
     cellId: number,
     thumbDataUrl: string,
   ) => Promise<{ claimed: boolean; byNickname: string }>;
+  // 이 방 안에서 내 이름(멤버 닉네임)을 바꿔요(본인 행만). 실시간으로 다른 참가자에게도 반영돼요.
+  updateNickname: (nickname: string) => Promise<void>;
+  // 내가 인증한 칸의 사진을 새 사진으로 교체해요(내 칸만). 인증 등급 축하는 뜨지 않아요.
+  changePhoto: (cellId: number, thumbDataUrl: string) => Promise<void>;
 }
 
 const FALLBACK_NICKNAME = '익명';
@@ -215,6 +220,34 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
     [roomId, state, myUid],
   );
 
+  const updateNickname = useCallback(
+    async (nickname: string) => {
+      if (roomId == null) {
+        throw new Error('참가 중인 룸이 없어요.');
+      }
+      await updateMyNickname(roomId, nickname);
+      const next = await fetchRoomState(roomId);
+      setState(next);
+    },
+    [roomId],
+  );
+
+  const changePhoto = useCallback(
+    async (cellId: number, thumbDataUrl: string) => {
+      if (roomId == null) {
+        throw new Error('참가 중인 룸이 없어요.');
+      }
+      // 내 칸의 사진만 교체돼요 — uploadThumb는 upsert:true, setCellThumb는 completed_by_uid=나
+      // 조건이라 남의 칸은 안 바뀌어요(선착순 소유는 그대로). 인증 등급 축하는 띄우지 않아요.
+      const cellIndex = cellId - 1;
+      const url = await uploadThumb(roomId, cellIndex, thumbDataUrl);
+      await setCellThumb(roomId, cellIndex, url);
+      const next = await fetchRoomState(roomId);
+      setState(next);
+    },
+    [roomId],
+  );
+
   return {
     board: state != null ? buildBoard(state) : null,
     members:
@@ -228,5 +261,7 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
     loading,
     error,
     claim,
+    updateNickname,
+    changePhoto,
   };
 }

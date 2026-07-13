@@ -87,6 +87,33 @@ export async function joinRoom(roomId: string, nickname: string): Promise<void> 
   }
 }
 
+// 함께 방 안에서 본인 닉네임(멤버 이름)을 바꿔요. 본인 member 행만 수정돼요(RLS members_update_self).
+// 칸 표시 이름의 1차 출처가 members라, member 행 갱신만으로도 현재 화면의 멤버 칩·칸 칩이 바로 바뀌어요.
+// 내가 인증한 칸의 completed_by_nick도 함께 갱신해, 방을 나가 members에서 빠진 뒤(폴백 시)에도 이름이 일관돼요.
+export async function updateMyNickname(
+  roomId: string,
+  nickname: string,
+): Promise<void> {
+  const supabase = requireSupabase();
+  const uid = await ensureUid();
+
+  const { error } = await supabase
+    .from('members')
+    .update({ nickname })
+    .eq('room_id', roomId)
+    .eq('uid', uid);
+  if (error != null) {
+    throw new Error(`이름 변경에 실패했어요: ${error.message}`);
+  }
+
+  // 내가 인증한 칸들의 저장 이름도 맞춰요(나간 뒤 폴백 표시용). 실패해도 치명적이지 않아 무시해요.
+  await supabase
+    .from('cells')
+    .update({ completed_by_nick: nickname })
+    .eq('room_id', roomId)
+    .eq('completed_by_uid', uid);
+}
+
 // 룸 전체 상태(룸·멤버·칸)를 한 번에 읽어요.
 export async function fetchRoomState(roomId: string): Promise<RoomState> {
   const supabase = requireSupabase();

@@ -79,6 +79,8 @@ export default function App() {
     myUid: sharedMyUid,
     deleted: sharedDeleted,
     claim,
+    updateNickname,
+    changePhoto,
   } = useSharedBoard(sharedRoomId);
 
   // Load persisted boards (Toss Storage in-app, localStorage fallback in browser)
@@ -240,6 +242,34 @@ export default function App() {
     })();
   };
 
+  // 함께 보드 — 내가 인증한 칸의 사진을 교체해요(내 칸만, 축하 화면 없음).
+  const handleSharedChangePhoto = (
+    _boardId: string,
+    cellId: number,
+    photoUrl: string,
+  ) => {
+    void (async () => {
+      try {
+        await changePhoto(cellId, photoUrl);
+        openToast('사진을 바꿨어요.');
+      } catch {
+        openToast('사진 변경에 실패했어요. 잠시 후 다시 시도해 주세요.');
+      }
+    })();
+  };
+
+  // 함께 보드 — 이 방에서 내 이름(멤버 닉네임)을 바꿔요.
+  const handleEditSharedNickname = (nickname: string) => {
+    void (async () => {
+      try {
+        await updateNickname(nickname);
+        openToast('이름을 바꿨어요.');
+      } catch {
+        openToast('이름 변경에 실패했어요. 잠시 후 다시 시도해 주세요.');
+      }
+    })();
+  };
+
   const handleCompleteCell = (
     boardId: string,
     cellId: number,
@@ -286,6 +316,29 @@ export default function App() {
       setCompletedCell({ cellTitle: justCompleted.title, photoUrl, tier });
       setViewState('complete');
     }
+  };
+
+  // 솔로 보드 — 완료한 칸의 사진을 교체해요(로컬 갱신, 축하 화면 없음).
+  const handleChangeCellPhoto = (
+    boardId: string,
+    cellId: number,
+    photoUrl: string,
+  ) => {
+    const target = boards.find((b) => b.id === boardId);
+    if (!target) return;
+    const updatedCells = target.cells.map((cell) =>
+      cell.id === cellId
+        ? {
+            ...cell,
+            photoUrl,
+            dateCompleted: new Date().toISOString().split('T')[0],
+          }
+        : cell,
+    );
+    saveBoards(
+      boards.map((b) => (b.id === boardId ? { ...b, cells: updatedCells } : b)),
+    );
+    openToast('사진을 바꿨어요.');
   };
 
   const handleConfirmCompletion = () => {
@@ -568,12 +621,15 @@ export default function App() {
               board={sharedBoard}
               members={sharedMembers}
               isOwner={sharedIsOwner}
+              myUid={sharedMyUid}
               earnedBadgeIds={earnedBadgeIds}
               onBack={() => {
                 setSharedRoomId(null);
                 setViewState('dashboard');
               }}
               onCompleteCell={handleSharedComplete}
+              onChangePhoto={handleSharedChangePhoto}
+              onEditNickname={handleEditSharedNickname}
               onDeleteBoard={() => {}}
               onLeaveBoard={() => handleLeaveSharedBoard(rid)}
               onDeleteSharedBoard={() => handleDeleteSharedBoard(rid)}
@@ -587,6 +643,7 @@ export default function App() {
             earnedBadgeIds={earnedBadgeIds}
             onBack={() => setViewState('dashboard')}
             onCompleteCell={handleCompleteCell}
+            onChangePhoto={handleChangeCellPhoto}
             onDeleteBoard={handleDeleteBoard}
             onNavigate={(view) => setViewState(view)}
           />
