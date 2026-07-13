@@ -61,8 +61,12 @@ function roomBaseCells(room: RoomRow): BingoCell[] {
 
 // 룸 상태(룸+칸)를 앱의 BingoBoard 모양으로 합쳐요.
 function buildBoard(state: RoomState): BingoBoard {
-  const { room, cells } = state;
+  const { room, cells, members } = state;
   const byIndex = new Map(cells.map((cell) => [cell.cell_index, cell]));
+  // 칸 인증자 이름은 이 방의 members(방·uid별) 기준으로 보여줘요.
+  // 기기 전역 닉네임이 바뀌어도 방마다 각자의 이름이 그대로 유지돼요.
+  // (멤버가 나가서 members에 없으면 인증 당시 저장된 이름으로 폴백.)
+  const nickByUid = new Map(members.map((m) => [m.uid, m.nickname]));
 
   const merged: BingoCell[] = roomBaseCells(room).map((base, index) => {
     const claim = byIndex.get(index);
@@ -76,7 +80,7 @@ function buildBoard(state: RoomState): BingoBoard {
       dateCompleted: claim.completed_at.split('T')[0],
       completedBy: {
         uid: claim.completed_by_uid,
-        nickname: claim.completed_by_nick,
+        nickname: nickByUid.get(claim.completed_by_uid) ?? claim.completed_by_nick,
       },
     };
   });
@@ -163,10 +167,15 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
       if (roomId == null) {
         throw new Error('참가 중인 룸이 없어요.');
       }
-      const nickname = (await getNickname()) ?? FALLBACK_NICKNAME;
+      // 내 이름은 이 방의 member 행(방·uid별)을 기준으로 해요.
+      // 기기 전역 닉네임이 다른 방/역할에서 바뀌어도 이 방의 내 이름은 그대로예요.
+      const myNickname =
+        state?.members.find((m) => m.uid === myUid)?.nickname ??
+        (await getNickname()) ??
+        FALLBACK_NICKNAME;
       const cellIndex = cellId - 1;
 
-      const result = await claimCell(roomId, cellIndex, nickname);
+      const result = await claimCell(roomId, cellIndex, myNickname);
       if (result.claimed) {
         const url = await uploadThumb(roomId, cellIndex, thumbDataUrl);
         await setCellThumb(roomId, cellIndex, url);
@@ -176,7 +185,7 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
       setState(next);
       return { claimed: result.claimed, byNickname: result.cell.completed_by_nick };
     },
-    [roomId],
+    [roomId, state, myUid],
   );
 
   return {
