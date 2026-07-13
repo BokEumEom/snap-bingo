@@ -76,6 +76,7 @@ export default function App() {
     board: sharedBoard,
     members: sharedMembers,
     isOwner: sharedIsOwner,
+    myUid: sharedMyUid,
     claim,
   } = useSharedBoard(sharedRoomId);
 
@@ -113,32 +114,40 @@ export default function App() {
     })();
   }, []);
 
-  // 공유 보드를 열어 로드되면(생성/참가 둘 다) 대시보드 카드용 참조를 한 번 저장해요.
+  // 공유 보드를 열면 대시보드 카드용 참조를 저장하고, 라이브 변경 때마다
+  // "내가 인증한 사진 칸"을 참조에 동기화해요(갤러리에서 함께 보드 사진도 보이게).
   useEffect(() => {
     if (sharedBoard == null || sharedBoard.roomId == null) {
       return;
     }
     const roomId = sharedBoard.roomId;
-    const title = sharedBoard.title;
-    const emoji = sharedBoard.emoji;
+    // 갤러리는 "나의 여름 조각들"이라 내가 인증한 칸만 담아요(남의 사진은 제외).
+    const myCells = sharedBoard.cells.filter(
+      (c) =>
+        c.completed && c.photoUrl != null && c.completedBy?.uid === sharedMyUid,
+    );
     setSharedRefs((prev) => {
-      if (prev.some((r) => r.roomId === roomId)) {
-        return prev;
-      }
       const ref: BingoBoard = {
         id: `room-${roomId}`,
-        title,
-        emoji,
-        cells: [],
+        title: sharedBoard.title,
+        emoji: sharedBoard.emoji,
+        cells: myCells,
         shared: true,
         roomId,
       };
-      const next = [ref, ...prev];
+      const idx = prev.findIndex((r) => r.roomId === roomId);
+      if (idx !== -1 && JSON.stringify(prev[idx]) === JSON.stringify(ref)) {
+        return prev; // 변화 없음 — 불필요한 저장/리렌더를 피해요.
+      }
+      const next =
+        idx === -1
+          ? [ref, ...prev]
+          : prev.map((r) => (r.roomId === roomId ? ref : r));
       void setStorageItem(SHARED_REFS_KEY, JSON.stringify(next));
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sharedBoard?.roomId]);
+  }, [sharedBoard, sharedMyUid]);
 
   // Persist on every update (fire-and-forget; UI already updated via setBoards)
   const saveBoards = (updatedBoards: BingoBoard[]) => {
@@ -158,18 +167,52 @@ export default function App() {
     setViewState('board');
   };
 
-  // 공유 보드 칸 인증 — 선착순. 지면 누가 채웠는지 토스트로 알려줘요.
+  // 공유 보드 칸 인증 — 선착순. 이기면 솔로와 동일하게 등급별 축하 화면을 보여주고,
+  // 지면 누가 먼저 채웠는지 토스트로 알려줘요.
   const handleSharedComplete = (
     _boardId: string,
     cellId: number,
     photoUrl: string,
   ) => {
+    // 인증 직전 보드(내 클릭 시점 상태)로 등급을 계산해요.
+    const beforeBoard = sharedBoard;
     void (async () => {
       try {
         const result = await claim(cellId, photoUrl);
         if (!result.claimed) {
           openToast(`이미 ${result.byNickname}님이 인증한 칸이에요.`);
+          return;
         }
+        if (beforeBoard == null) {
+          return;
+        }
+        // 이번 인증이 새 빙고 줄/보드 완성을 만들었는지 판정해요(솔로와 동일 로직).
+        const updatedCells = beforeBoard.cells.map((cell) =>
+          cell.id === cellId ? { ...cell, completed: true, photoUrl } : cell,
+        );
+        const updatedBoard: BingoBoard = {
+          ...beforeBoard,
+          cells: updatedCells,
+        };
+        const wasComplete =
+          beforeBoard.cells.length > 0 &&
+          beforeBoard.cells.every((c) => c.completed);
+        const nowComplete =
+          updatedBoard.cells.length > 0 &&
+          updatedBoard.cells.every((c) => c.completed);
+        const tier: CompletionTier =
+          nowComplete && !wasComplete
+            ? 'board'
+            : countBingoLines(updatedBoard) > countBingoLines(beforeBoard)
+              ? 'bingo'
+              : 'cell';
+        const justCompleted = updatedCells.find((c) => c.id === cellId);
+        setCompletedCell({
+          cellTitle: justCompleted?.title ?? '',
+          photoUrl,
+          tier,
+        });
+        setViewState('complete');
       } catch {
         openToast('인증에 실패했어요. 잠시 후 다시 시도해 주세요.');
       }
@@ -451,6 +494,21 @@ export default function App() {
   const activeBoard = boards.find((b) => b.id === activeBoardId) || boards[0];
   // 대시보드 목록 = 공유 룸 참조(맨 위) + 로컬(솔로) 보드.
   const allBoards = [...sharedRefs, ...boards];
+  // 뱃지는 솔로 보드 + 지금 열려 있는 함께 보드에서 "내가 인증한 칸"을 반영해요.
+  // (갤러리와 동일하게 개인 기여 기준 — 남이 채운 칸은 내 뱃지에 포함하지 않아요.
+  //  그리드 위치는 유지해 내가 한 줄을 직접 완성하면 빙고 뱃지도 정상 판정돼요.)
+  const myShareBoard =
+    sharedBoard != null
+      ? {
+          ...sharedBoard,
+          cells: sharedBoard.cells.map((c) =>
+            c.completedBy?.uid === sharedMyUid ? c : { ...c, completed: false },
+          ),
+        }
+      : null;
+  const earnedBadgeIds = computeEarnedBadgeIds(
+    myShareBoard != null ? [...boards, myShareBoard] : boards,
+  );
 
   const renderActiveView = () => {
     if (!activeBoard && boards.length > 0) return null;
@@ -482,7 +540,7 @@ export default function App() {
               board={sharedBoard}
               members={sharedMembers}
               isOwner={sharedIsOwner}
-              earnedBadgeIds={computeEarnedBadgeIds(boards)}
+              earnedBadgeIds={earnedBadgeIds}
               onBack={() => {
                 setSharedRoomId(null);
                 setViewState('dashboard');
@@ -498,7 +556,7 @@ export default function App() {
         return activeBoard ? (
           <BoardDetailView
             board={activeBoard}
-            earnedBadgeIds={computeEarnedBadgeIds(boards)}
+            earnedBadgeIds={earnedBadgeIds}
             onBack={() => setViewState('dashboard')}
             onCompleteCell={handleCompleteCell}
             onDeleteBoard={handleDeleteBoard}
@@ -553,7 +611,7 @@ export default function App() {
       case 'gallery':
         return (
           <GalleryView
-            boards={boards}
+            boards={allBoards}
             onNavigate={(view) => setViewState(view)}
             onClearGallery={handleClearGallery}
           />
