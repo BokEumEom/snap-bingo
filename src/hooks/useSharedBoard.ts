@@ -5,7 +5,6 @@ import { BOARD_TEMPLATES } from '../data';
 import { ensureUid, getNickname } from '../lib/identity';
 import {
   fetchRoomState,
-  joinRoom,
   claimCell,
   uploadThumb,
   setCellThumb,
@@ -129,8 +128,9 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
     (async () => {
       try {
         const uid = await ensureUid();
-        const nickname = (await getNickname()) ?? FALLBACK_NICKNAME;
-        await joinRoom(roomId, nickname);
+        // 여는 것과 참가(join)를 분리했어요 — 링크로 열어 보기만 해도 멤버로 등록되던
+        // 문제(leak C)를 없앴어요. 참가는 명시적으로만(방 생성 시, 참가 시트에서) 이뤄져요.
+        // 비멤버가 열면 RLS로 룸이 안 보여 아래 catch에서 '삭제/접근 불가'로 처리돼요.
         const fresh = await fetchRoomState(roomId);
         if (!active) {
           return;

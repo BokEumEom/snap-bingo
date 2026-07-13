@@ -11,7 +11,7 @@ import { INITIAL_BOARDS, BOARD_TEMPLATES } from './data';
 import { computeEarnedBadgeIds, countBingoLines } from './lib/badges';
 import { getStorageItem, setStorageItem } from './lib/storage';
 import { parseInvite, parseRoomId, Invite } from './lib/invite';
-import { createRoom, deleteRoom, leaveRoom } from './lib/room';
+import { createRoom, deleteRoom, leaveRoom, joinRoom } from './lib/room';
 import { scopeSharedRefs } from './lib/sharedRefs';
 import { setNickname } from './lib/identity';
 import { useSharedBoard } from './hooks/useSharedBoard';
@@ -392,7 +392,14 @@ export default function App() {
       return;
     }
     const nick = nickname.trim() || '익명';
-    await setNickname(nick);
+    try {
+      await setNickname(nick);
+      // 참가는 여기서만 명시적으로 이뤄져요(leak C 방지 — '열기'와 '참가'를 분리).
+      await joinRoom(pendingRoomId, nick);
+    } catch (e) {
+      openToast(e instanceof Error ? e.message : '함께 보드에 참가하지 못했어요.');
+      return;
+    }
     setIsRoomJoinOpen(false);
     setSharedRoomId(pendingRoomId);
     setViewState('board');
