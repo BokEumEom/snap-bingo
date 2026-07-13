@@ -37,7 +37,7 @@ export default function GalleryView({
     : allCompletedPhotos.filter(p => p.boardId === filter);
 
   return (
-    <div className="w-full max-w-md mx-auto bg-page min-h-screen pb-28 text-neutral-900 font-sans relative flex flex-col">
+    <div className="w-full max-w-md mx-auto bg-page min-h-screen pb-28 text-neutral-900 font-sans relative flex flex-col slide-clip-x">
       
       {/* TopAppBar */}
       <header className="grid grid-cols-[1fr_auto_1fr] items-center px-5 h-14 w-full z-40 bg-page/80 backdrop-blur-md sticky top-0">
@@ -68,7 +68,7 @@ export default function GalleryView({
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-5 space-y-6">
+      <main className="flex-1 p-5 space-y-6 animate-slide-in-right">
         
         {/* Gallery Intro Header */}
         <section className="space-y-1">
