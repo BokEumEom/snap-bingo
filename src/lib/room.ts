@@ -110,6 +110,26 @@ export async function fetchRoomState(roomId: string): Promise<RoomState> {
   };
 }
 
+// 주어진 roomId들 중 "현재 세션(uid)이 접근 가능한"(멤버 또는 생성자) 방만 걸러 반환해요.
+// RLS(rooms_select_member_or_creator)가 접근 불가·삭제된 방을 자동으로 제외해요.
+// 대시보드의 공유 보드 목록에서 좀비(삭제됨)·남의 uid 방을 정리하는 데 써요.
+export async function fetchAccessibleRoomIds(
+  roomIds: string[],
+): Promise<string[]> {
+  if (roomIds.length === 0) {
+    return [];
+  }
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('id')
+    .in('id', roomIds);
+  if (error != null) {
+    throw new Error(`방 목록 확인에 실패했어요: ${error.message}`);
+  }
+  return (data ?? []).map((r) => (r as { id: string }).id);
+}
+
 // 칸 인증(선착순). 이미 남이 채웠으면 claimed=false + 그 사람의 칸을 반환해요.
 // 썸네일은 여기서 올리지 않아요 — 이겼을 때만 setCellThumb로 올려 남의 사진을 덮지 않게 해요.
 export async function claimCell(

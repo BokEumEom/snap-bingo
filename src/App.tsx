@@ -12,6 +12,7 @@ import { computeEarnedBadgeIds, countBingoLines } from './lib/badges';
 import { getStorageItem, setStorageItem } from './lib/storage';
 import { parseInvite, parseRoomId, Invite } from './lib/invite';
 import { createRoom, deleteRoom } from './lib/room';
+import { scopeSharedRefs } from './lib/sharedRefs';
 import { setNickname } from './lib/identity';
 import { useSharedBoard } from './hooks/useSharedBoard';
 import NewBoardForm from './components/NewBoardForm';
@@ -94,10 +95,17 @@ export default function App() {
 
       const savedRefs = await getStorageItem(SHARED_REFS_KEY);
       if (savedRefs) {
+        let parsed: BingoBoard[] = [];
         try {
-          setSharedRefs(JSON.parse(savedRefs));
+          parsed = JSON.parse(savedRefs);
         } catch {
           // 손상된 참조는 무시 — 룸을 다시 열면 재생성돼요.
+        }
+        // 현재 신원(uid) 기준으로 검증해 좀비·남의 uid 방을 걸러내요(leak A·B 정리).
+        const scoped = await scopeSharedRefs(parsed);
+        setSharedRefs(scoped.refs);
+        if (scoped.changed) {
+          void setStorageItem(SHARED_REFS_KEY, JSON.stringify(scoped.refs));
         }
       }
 
