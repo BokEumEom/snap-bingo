@@ -11,7 +11,7 @@ import { INITIAL_BOARDS, BOARD_TEMPLATES } from './data';
 import { computeEarnedBadgeIds, countBingoLines } from './lib/badges';
 import { getStorageItem, setStorageItem } from './lib/storage';
 import { parseInvite, parseRoomId, Invite } from './lib/invite';
-import { createRoom, deleteRoom } from './lib/room';
+import { createRoom, deleteRoom, leaveRoom } from './lib/room';
 import { scopeSharedRefs } from './lib/sharedRefs';
 import { setNickname } from './lib/identity';
 import { useSharedBoard } from './hooks/useSharedBoard';
@@ -412,8 +412,15 @@ export default function App() {
     setViewState('dashboard');
   };
 
-  // 함께 보드 나가기 — 방은 그대로 두고 내 로컬 목록(참조)에서만 제거하고 대시보드로 돌아가요.
-  const handleLeaveSharedBoard = (roomId: string) => {
+  // 함께 보드 나가기(참가자) — DB에서 본인 멤버 행을 실제로 제거하고(멤버 수·칩에서 빠짐),
+  // 내 로컬 목록에서도 빼고 대시보드로 돌아가요. 초대 링크로 다시 참가할 수 있어요.
+  const handleLeaveSharedBoard = async (roomId: string) => {
+    try {
+      await leaveRoom(roomId);
+    } catch (e) {
+      openToast(e instanceof Error ? e.message : '함께 보드를 나가지 못했어요.');
+      return;
+    }
     setSharedRefs((prev) => {
       const next = prev.filter((r) => r.roomId !== roomId);
       void setStorageItem(SHARED_REFS_KEY, JSON.stringify(next));

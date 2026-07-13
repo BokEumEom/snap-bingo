@@ -222,6 +222,22 @@ export async function setCellThumb(
   }
 }
 
+// 참가자가 함께 방에서 실제로 나가요 — 본인 member 행을 DB에서 삭제해요(멤버 수·칩에서 빠짐).
+// 삭제 권한은 RLS(members_delete_self = 본인 행만)로 강제돼요.
+// 이미 인증한 칸(cells)은 그대로 둬요(기여 기록 유지). 방장은 이 경로 대신 deleteRoom을 써요.
+export async function leaveRoom(roomId: string): Promise<void> {
+  const supabase = requireSupabase();
+  const uid = await ensureUid();
+  const { error } = await supabase
+    .from('members')
+    .delete()
+    .eq('room_id', roomId)
+    .eq('uid', uid);
+  if (error != null) {
+    throw new Error(`함께 보드 나가기에 실패했어요: ${error.message}`);
+  }
+}
+
 // 방장이 함께 방을 완전히 삭제해요(모든 참가자에게서 사라짐).
 // 멤버·칸은 rooms FK의 on delete cascade로 함께 지워지고, Storage 썸네일은 cascade가 안 돼
 // 방을 지우기 전에 먼저 비워요(방 삭제 후엔 소유 판정이 안 돼 orphan이 남아요).
