@@ -10,6 +10,7 @@ import {
   uploadThumb,
   setCellThumb,
   subscribeRoom,
+  roomStillExists,
   type RoomState,
   type RoomRow,
 } from '../lib/room';
@@ -25,6 +26,9 @@ export interface SharedBoardState {
   myUid: string | null;
   // 내가 이 방을 만든 사람(방장)인지. 방장만 방 전체를 삭제할 수 있어요.
   isOwner: boolean;
+  // 방장이 방을 삭제했거나 방이 사라져 더는 접근할 수 없을 때 true예요.
+  // (실시간 재조회가 "방 없음"으로 실패하면 stale 보드 대신 이 값으로 알려요.)
+  deleted: boolean;
   loading: boolean;
   error: string | null;
   // 칸 인증(선착순). 이겼으면 썸네일까지 올려요. 반환값으로 승패·누가 채웠는지 알려줘요.
@@ -106,10 +110,12 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
   const [myUid, setMyUid] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleted, setDeleted] = useState(false);
 
   useEffect(() => {
     if (roomId == null) {
       setState(null);
+      setDeleted(false);
       return;
     }
 
@@ -118,6 +124,7 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
 
     setLoading(true);
     setError(null);
+    setDeleted(false);
 
     (async () => {
       try {
@@ -139,12 +146,32 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
                 setState(next);
               }
             } catch {
-              // 일시적 재조회 실패는 무시해요 — 다음 변경 이벤트에 다시 맞춰져요.
+              // 재조회 실패 — 방이 삭제된 건지(방장이 지움) 일시적 오류인지 구분해요.
+              // 삭제됐으면 '삭제됨'으로 알려 stale 보드를 남기지 않고, 일시 오류면
+              // 무시해요(다음 변경 이벤트에 다시 맞춰져요).
+              if (!active) {
+                return;
+              }
+              const exists = await roomStillExists(roomId);
+              if (active && exists === false) {
+                setDeleted(true);
+              }
             }
           })();
         });
       } catch (e) {
-        if (active) {
+        // 초대 후 열기 전에 방이 이미 삭제된 경우도 '삭제됨'으로 처리해요(무한 로딩 방지).
+        // 그 외(네트워크 등)면 일반 오류로 둬요.
+        if (!active) {
+          return;
+        }
+        const exists = await roomStillExists(roomId);
+        if (!active) {
+          return;
+        }
+        if (exists === false) {
+          setDeleted(true);
+        } else {
           setError(e instanceof Error ? e.message : '알 수 없는 오류예요.');
         }
       } finally {
@@ -197,6 +224,7 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
     myUid,
     isOwner:
       state != null && myUid != null && state.room.created_by === myUid,
+    deleted,
     loading,
     error,
     claim,

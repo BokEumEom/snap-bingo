@@ -110,6 +110,25 @@ export async function fetchRoomState(roomId: string): Promise<RoomState> {
   };
 }
 
+// 방이 아직 존재(=현재 세션이 접근 가능)하는지 확인해요.
+//   true  = 있음
+//   false = 삭제됨(또는 더 이상 접근 불가 — 방장이 지웠거나 내가 빠졌을 때)
+//   null  = 확인 실패(네트워크 등 일시적 오류)
+// 실시간 재조회가 실패했을 때 "방이 삭제된 건지" vs "일시적 오류인지"를 구분하는 데 써요.
+// (.maybeSingle()은 0행이어도 에러 없이 data=null을 주므로 삭제/미접근을 안전하게 판별해요.)
+export async function roomStillExists(roomId: string): Promise<boolean | null> {
+  const supabase = requireSupabase();
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('id')
+    .eq('id', roomId)
+    .maybeSingle();
+  if (error != null) {
+    return null;
+  }
+  return data != null;
+}
+
 // 주어진 roomId들 중 "현재 세션(uid)이 접근 가능한"(멤버 또는 생성자) 방만 걸러 반환해요.
 // RLS(rooms_select_member_or_creator)가 접근 불가·삭제된 방을 자동으로 제외해요.
 // 대시보드의 공유 보드 목록에서 좀비(삭제됨)·남의 uid 방을 정리하는 데 써요.

@@ -77,6 +77,7 @@ export default function App() {
     members: sharedMembers,
     isOwner: sharedIsOwner,
     myUid: sharedMyUid,
+    deleted: sharedDeleted,
     claim,
   } = useSharedBoard(sharedRoomId);
 
@@ -117,7 +118,8 @@ export default function App() {
   // 공유 보드를 열면 대시보드 카드용 참조를 저장하고, 라이브 변경 때마다
   // "내가 인증한 사진 칸"을 참조에 동기화해요(갤러리에서 함께 보드 사진도 보이게).
   useEffect(() => {
-    if (sharedBoard == null || sharedBoard.roomId == null) {
+    // 방이 삭제됐으면 참조를 되살리지 않아요(삭제 처리 이펙트가 참조를 지우는 걸 덮어쓰지 않게).
+    if (sharedBoard == null || sharedBoard.roomId == null || sharedDeleted) {
       return;
     }
     const roomId = sharedBoard.roomId;
@@ -147,7 +149,26 @@ export default function App() {
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sharedBoard, sharedMyUid]);
+  }, [sharedBoard, sharedMyUid, sharedDeleted]);
+
+  // 방장이 함께 방을 삭제하면(또는 방이 사라지면) 참가자 화면에 stale 보드를 남기지 않아요.
+  // 안내 토스트를 띄우고, 로컬 참조를 지우고, 대시보드로 돌아가요.
+  // (sharedRoomId를 null로 만들면 훅이 deleted를 다시 false로 리셋해요.)
+  useEffect(() => {
+    if (!sharedDeleted || sharedRoomId == null) {
+      return;
+    }
+    const rid = sharedRoomId;
+    openToast('방장이 이 함께 챌린지를 삭제했어요.');
+    setSharedRefs((prev) => {
+      const next = prev.filter((r) => r.roomId !== rid);
+      void setStorageItem(SHARED_REFS_KEY, JSON.stringify(next));
+      return next;
+    });
+    setSharedRoomId(null);
+    setViewState('dashboard');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedDeleted, sharedRoomId]);
 
   // Persist on every update (fire-and-forget; UI already updated via setBoards)
   const saveBoards = (updatedBoards: BingoBoard[]) => {
