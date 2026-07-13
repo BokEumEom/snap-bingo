@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useToast } from '@toss/tds-mobile';
+import { useToast, Loader } from '@toss/tds-mobile';
 import {
   ViewState,
   BingoBoard,
@@ -21,6 +21,7 @@ import RoomJoinSheet from './components/RoomJoinSheet';
 import BottomSheet from './components/BottomSheet';
 import DashboardView from './components/DashboardView';
 import BoardDetailView from './components/BoardDetailView';
+import BoardDetailSkeleton from './components/BoardDetailSkeleton';
 import MissionCompleteView from './components/MissionCompleteView';
 import BingoAchievementView from './components/BingoAchievementView';
 import GalleryView from './components/GalleryView';
@@ -609,11 +610,12 @@ export default function App() {
           const rid = sharedRoomId;
           if (sharedBoard == null) {
             return (
-              <div className="min-h-screen flex items-center justify-center bg-white p-6">
-                <div className="animate-spin text-blue-600 font-bold">
-                  함께 보드 여는 중...
-                </div>
-              </div>
+              <BoardDetailSkeleton
+                onBack={() => {
+                  setSharedRoomId(null);
+                  setViewState('dashboard');
+                }}
+              />
             );
           }
           return (
@@ -719,7 +721,7 @@ export default function App() {
         renderActiveView()
       ) : (
         <div className="min-h-screen flex items-center justify-center bg-white p-6">
-          <div className="animate-spin text-blue-600 font-bold">로딩 중...</div>
+          <Loader size="medium" label="로딩 중이에요" />
         </div>
       )}
 
