@@ -529,10 +529,15 @@ export default function App() {
             onNavigate={(view) => setViewState(view)}
           />
         );
-      case 'achievement':
-        return activeBoard ? (
+      case 'achievement': {
+        // 인증 현황(기념 카드)은 공유(함께) 보드와 솔로 보드 모두 지원해요.
+        // 공유 보드를 보는 중이면 그 보드를 쓰고(솔로 activeBoard가 없어 홈으로
+        // 튕기던 버그 수정), 아니면 솔로 activeBoard를 써요.
+        const achievementBoard =
+          sharedRoomId != null ? sharedBoard : activeBoard;
+        return achievementBoard ? (
           <BingoAchievementView
-            board={activeBoard}
+            board={achievementBoard}
             onBack={() => setViewState('board')}
             onClose={() => setViewState('board')}
           />
@@ -544,6 +549,7 @@ export default function App() {
             onNavigate={(view) => setViewState(view)}
           />
         );
+      }
       case 'gallery':
         return (
           <GalleryView
