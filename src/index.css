@@ -83,6 +83,53 @@ body {
   animation: fadeIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* 화면 전환 좌우 슬라이드 — 넷플릭스 탭 느낌의 방향성 있는 등장.
+   보드 열기(앞으로)=오른쪽에서, 뒤로가기(홈)=왼쪽에서 미끄러져 들어와요.
+   backwards fill-mode라 애니메이션이 끝나면 transform이 남지 않아
+   fixed 카메라 버튼/sticky 헤더의 containing block을 건드리지 않아요. */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(48px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-48px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* 슬라이드 중 가로 오버플로우만 잘라요(스크롤 컨테이너를 만들지 않는 clip 사용). */
+.slide-clip-x {
+  overflow-x: clip;
+}
+
+/* 모션 최소화를 선호하면 슬라이드를 끄고 즉시 표시해요. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-in-right,
+  .animate-slide-in-left {
+    animation: none;
+  }
+}
+
 /* BoardDetail 안내 목록: TDS Post.Ol/Li를 시맨틱 컨테이너로 쓰되 기본 마커/들여쓰기를
    억제해 커스텀 원형 번호 뱃지 레이아웃을 유지한다. (TDS의 unlayered ::before 카운터를
    이기려면 !important 필요 — reboot 리셋과 같은 cascade-layers 이슈) */

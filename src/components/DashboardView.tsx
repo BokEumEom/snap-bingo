@@ -26,7 +26,7 @@ export default function DashboardView({
   const handleInvite = () => shareApp(openToast);
 
   return (
-    <div className="w-full max-w-md mx-auto bg-page min-h-screen pb-28 text-neutral-900 font-sans">
+    <div className="w-full max-w-md mx-auto bg-page min-h-screen pb-28 text-neutral-900 font-sans slide-clip-x">
       
       {/* TopAppBar — 공유는 하단 '친구 초대하기' 섹션으로 일원화(우측 상단 아이콘 제거) */}
       <header className="flex items-center px-5 h-14 w-full z-40 bg-page/80 backdrop-blur-md sticky top-0">
@@ -44,7 +44,7 @@ export default function DashboardView({
       </header>
 
       {/* Main Body */}
-      <main className="px-5 pt-4 space-y-6">
+      <main className="px-5 pt-4 space-y-6 animate-slide-in-left">
         
         {/* Hero: 여름 무드 배너 (hero_01~06 캐러셀) — 생성 액션은 아래 헤더 버튼으로 분리 */}
         <HeroCarousel />

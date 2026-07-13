@@ -145,7 +145,7 @@ export default function BoardDetailView({
   };
 
   return (
-    <div className="w-full max-w-md mx-auto bg-page min-h-screen pb-28 text-neutral-900 font-sans relative">
+    <div className="w-full max-w-md mx-auto bg-page min-h-screen pb-28 text-neutral-900 font-sans relative slide-clip-x">
       
       {/* TopAppBar */}
       <header className="grid grid-cols-[1fr_auto_1fr] items-center px-5 h-14 w-full z-40 bg-page/80 backdrop-blur-md sticky top-0">
@@ -166,7 +166,7 @@ export default function BoardDetailView({
       </header>
 
       {/* Main Container */}
-      <main className="px-5 pt-5 space-y-6">
+      <main className="px-5 pt-5 space-y-6 animate-slide-in-right">
         
         {/* Dashboard Header */}
         <section className="space-y-3">
