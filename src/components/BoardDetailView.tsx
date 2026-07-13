@@ -19,8 +19,12 @@ interface BoardDetailViewProps {
   onNavigate: (view: NavKey | 'achievement') => void;
   // 공유(함께) 보드일 때 참가자 목록. 있으면 멤버 줄과 칸별 인증자 칩을 보여줘요.
   members?: { uid: string; nickname: string }[];
-  // 공유 보드 전용 — '나가기'(내 목록에서 제거). 있으면 삭제 대신 나가기 버튼을 보여줘요.
+  // 내가 이 함께 보드를 만든 사람(방장)인지. 방장은 '삭제', 참가자는 '나가기'를 봐요.
+  isOwner?: boolean;
+  // 공유 보드 참가자 전용 — '나가기'(내 목록에서 제거).
   onLeaveBoard?: () => void;
+  // 공유 보드 방장 전용 — '삭제'(DB에서 방 전체 제거, 모든 참가자에게서 사라짐).
+  onDeleteSharedBoard?: () => void;
 }
 
 export default function BoardDetailView({
@@ -31,7 +35,9 @@ export default function BoardDetailView({
   onDeleteBoard,
   onNavigate,
   members = [],
-  onLeaveBoard
+  isOwner = false,
+  onLeaveBoard,
+  onDeleteSharedBoard
 }: BoardDetailViewProps) {
   const shared = board.shared === true;
   const { openToast } = useToast();
@@ -50,7 +56,7 @@ export default function BoardDetailView({
     if (ok) onDeleteBoard(board.id);
   };
 
-  // 함께 보드 나가기 — 방을 삭제하지 않고 내 목록(대시보드)에서만 빼요. 초대 링크로 재참가 가능.
+  // 함께 보드 나가기(참가자) — 방을 삭제하지 않고 내 목록(대시보드)에서만 빼요. 초대 링크로 재참가 가능.
   const handleLeave = async () => {
     const ok = await openConfirm({
       title: '이 함께 보드에서 나갈까요?',
@@ -59,6 +65,17 @@ export default function BoardDetailView({
       cancelButton: '취소',
     });
     if (ok) onLeaveBoard?.();
+  };
+
+  // 함께 보드 삭제(방장) — 방·참가자·인증 사진이 모두에게서 사라지고 되돌릴 수 없어요.
+  const handleDeleteShared = async () => {
+    const ok = await openConfirm({
+      title: '이 함께 챌린지를 삭제할까요?',
+      description: '모든 참가자에게서 보드와 인증한 사진이 사라지고 되돌릴 수 없어요.',
+      confirmButton: '삭제',
+      cancelButton: '취소',
+    });
+    if (ok) onDeleteSharedBoard?.();
   };
 
   // 친구 초대 — 공유 보드면 같은 룸에 실시간으로 참가하는 링크, 솔로면 각자 채우는 링크를 공유해요.
@@ -274,9 +291,9 @@ export default function BoardDetailView({
           </Post.Ol>
         </section>
 
-        {/* 솔로 보드는 '삭제', 함께 보드는 '나가기'(내 목록에서 제거) — 함께 판을 개인이 삭제하지 않아요. */}
+        {/* 함께 보드: 방장=삭제(모두에게서 제거), 참가자=나가기(내 목록에서만). 솔로=삭제. */}
         <section className="pt-1">
-          {shared ? (
+          {shared && !isOwner ? (
             <button
               onClick={handleLeave}
               className="w-full text-center text-xs font-semibold text-neutral-500 py-3 rounded-2xl! hover:bg-neutral-100/60 active:scale-[0.98] transition-all"
@@ -285,10 +302,10 @@ export default function BoardDetailView({
             </button>
           ) : (
             <button
-              onClick={handleDelete}
+              onClick={shared ? handleDeleteShared : handleDelete}
               className="w-full text-center text-xs font-semibold text-rose-500 py-3 rounded-2xl! hover:bg-rose-50/60 active:scale-[0.98] transition-all"
             >
-              이 보드 삭제하기
+              {shared ? '이 함께 챌린지 삭제하기' : '이 보드 삭제하기'}
             </button>
           )}
         </section>

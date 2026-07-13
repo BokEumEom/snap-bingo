@@ -202,6 +202,33 @@ export async function setCellThumb(
   }
 }
 
+// 방장이 함께 방을 완전히 삭제해요(모든 참가자에게서 사라짐).
+// 멤버·칸은 rooms FK의 on delete cascade로 함께 지워지고, Storage 썸네일은 cascade가 안 돼
+// 방을 지우기 전에 먼저 비워요(방 삭제 후엔 소유 판정이 안 돼 orphan이 남아요).
+// 삭제 권한은 RLS(rooms_delete_owner = created_by만)로 강제돼요.
+export async function deleteRoom(roomId: string): Promise<void> {
+  const supabase = requireSupabase();
+
+  // 1) 썸네일 정리 — cell-photos/<roomId>/ 아래 객체를 나열해 삭제(베스트에포트).
+  try {
+    const { data: files } = await supabase.storage
+      .from('cell-photos')
+      .list(roomId);
+    if (files != null && files.length > 0) {
+      const paths = files.map((f) => `${roomId}/${f.name}`);
+      await supabase.storage.from('cell-photos').remove(paths);
+    }
+  } catch {
+    // 썸네일 정리 실패는 치명적이지 않아요 — 방 삭제는 계속 진행해요(최악의 경우 이미지만 orphan).
+  }
+
+  // 2) 방 삭제(멤버·칸은 cascade).
+  const { error } = await supabase.from('rooms').delete().eq('id', roomId);
+  if (error != null) {
+    throw new Error(`함께 보드 삭제에 실패했어요: ${error.message}`);
+  }
+}
+
 // 룸의 칸·멤버 변경을 실시간 구독해요. 변경이 오면 onChange()가 호출돼요(호출부에서 재조회).
 // 구독 해제 함수를 반환해요.
 export function subscribeRoom(

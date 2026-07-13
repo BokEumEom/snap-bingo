@@ -11,7 +11,7 @@ import { INITIAL_BOARDS, BOARD_TEMPLATES } from './data';
 import { computeEarnedBadgeIds, countBingoLines } from './lib/badges';
 import { getStorageItem, setStorageItem } from './lib/storage';
 import { parseInvite, parseRoomId, Invite } from './lib/invite';
-import { createRoom } from './lib/room';
+import { createRoom, deleteRoom } from './lib/room';
 import { setNickname } from './lib/identity';
 import { useSharedBoard } from './hooks/useSharedBoard';
 import NewBoardForm from './components/NewBoardForm';
@@ -74,6 +74,7 @@ export default function App() {
   const {
     board: sharedBoard,
     members: sharedMembers,
+    isOwner: sharedIsOwner,
     claim,
   } = useSharedBoard(sharedRoomId);
 
@@ -414,6 +415,24 @@ export default function App() {
     setViewState('dashboard');
   };
 
+  // 함께 보드 삭제(방장 전용) — DB에서 방·멤버·칸·사진을 전부 지우고(모든 참가자에게서 사라짐)
+  // 내 로컬 목록에서도 제거한 뒤 대시보드로 돌아가요.
+  const handleDeleteSharedBoard = async (roomId: string) => {
+    try {
+      await deleteRoom(roomId);
+    } catch (e) {
+      openToast(e instanceof Error ? e.message : '함께 보드를 삭제하지 못했어요.');
+      return;
+    }
+    setSharedRefs((prev) => {
+      const next = prev.filter((r) => r.roomId !== roomId);
+      void setStorageItem(SHARED_REFS_KEY, JSON.stringify(next));
+      return next;
+    });
+    setSharedRoomId(null);
+    setViewState('dashboard');
+  };
+
   const activeBoard = boards.find((b) => b.id === activeBoardId) || boards[0];
   // 대시보드 목록 = 공유 룸 참조(맨 위) + 로컬(솔로) 보드.
   const allBoards = [...sharedRefs, ...boards];
@@ -447,6 +466,7 @@ export default function App() {
             <BoardDetailView
               board={sharedBoard}
               members={sharedMembers}
+              isOwner={sharedIsOwner}
               earnedBadgeIds={computeEarnedBadgeIds(boards)}
               onBack={() => {
                 setSharedRoomId(null);
@@ -455,6 +475,7 @@ export default function App() {
               onCompleteCell={handleSharedComplete}
               onDeleteBoard={() => {}}
               onLeaveBoard={() => handleLeaveSharedBoard(rid)}
+              onDeleteSharedBoard={() => handleDeleteSharedBoard(rid)}
               onNavigate={(view) => setViewState(view)}
             />
           );

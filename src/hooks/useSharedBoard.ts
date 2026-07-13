@@ -23,6 +23,8 @@ export interface SharedBoardState {
   board: BingoBoard | null;
   members: SharedMember[];
   myUid: string | null;
+  // 내가 이 방을 만든 사람(방장)인지. 방장만 방 전체를 삭제할 수 있어요.
+  isOwner: boolean;
   loading: boolean;
   error: string | null;
   // 칸 인증(선착순). 이겼으면 썸네일까지 올려요. 반환값으로 승패·누가 채웠는지 알려줘요.
@@ -184,6 +186,8 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
         ? state.members.map((m) => ({ uid: m.uid, nickname: m.nickname }))
         : [],
     myUid,
+    isOwner:
+      state != null && myUid != null && state.room.created_by === myUid,
     loading,
     error,
     claim,
