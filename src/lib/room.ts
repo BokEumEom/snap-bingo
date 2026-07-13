@@ -239,30 +239,40 @@ export async function leaveRoom(roomId: string): Promise<void> {
 }
 
 // 방장이 함께 방을 완전히 삭제해요(모든 참가자에게서 사라짐).
-// 멤버·칸은 rooms FK의 on delete cascade로 함께 지워지고, Storage 썸네일은 cascade가 안 돼
-// 방을 지우기 전에 먼저 비워요(방 삭제 후엔 소유 판정이 안 돼 orphan이 남아요).
-// 삭제 권한은 RLS(rooms_delete_owner = created_by만)로 강제돼요.
+// 서버(Edge Function `delete-room`)가 소유권 검증 → Storage 썸네일 삭제 → 방 삭제(cascade)를
+// 한 번에(원자적으로) 처리해요. 예전처럼 클라이언트가 썸네일을 베스트에포트로 지우다 실패해
+// orphan이 남는 일을 없앴어요 — 사진 정리에 실패하면 방도 지우지 않고 에러를 그대로 알려줘요.
 export async function deleteRoom(roomId: string): Promise<void> {
   const supabase = requireSupabase();
 
-  // 1) 썸네일 정리 — cell-photos/<roomId>/ 아래 객체를 나열해 삭제(베스트에포트).
-  try {
-    const { data: files } = await supabase.storage
-      .from('cell-photos')
-      .list(roomId);
-    if (files != null && files.length > 0) {
-      const paths = files.map((f) => `${roomId}/${f.name}`);
-      await supabase.storage.from('cell-photos').remove(paths);
-    }
-  } catch {
-    // 썸네일 정리 실패는 치명적이지 않아요 — 방 삭제는 계속 진행해요(최악의 경우 이미지만 orphan).
-  }
-
-  // 2) 방 삭제(멤버·칸은 cascade).
-  const { error } = await supabase.from('rooms').delete().eq('id', roomId);
+  const { data, error } = await supabase.functions.invoke('delete-room', {
+    body: { roomId },
+  });
   if (error != null) {
-    throw new Error(`함께 보드 삭제에 실패했어요: ${error.message}`);
+    throw new Error(await extractFunctionErrorMessage(error));
   }
+  if (data != null && (data as { success?: boolean }).success === false) {
+    throw new Error(
+      (data as { error?: string }).error ?? '함께 보드 삭제에 실패했어요.',
+    );
+  }
+}
+
+// supabase-js functions.invoke는 함수가 non-2xx를 반환하면 error(FunctionsHttpError)를 주고
+// data는 null이에요. 서버가 담아 보낸 사용자용 메시지(JSON의 error)를 꺼내 그대로 보여줘요.
+async function extractFunctionErrorMessage(error: unknown): Promise<string> {
+  const context = (error as { context?: Response }).context;
+  if (context != null && typeof context.json === 'function') {
+    try {
+      const body = (await context.json()) as { error?: unknown };
+      if (typeof body.error === 'string' && body.error !== '') {
+        return body.error;
+      }
+    } catch {
+      // JSON 파싱 실패 시 기본 메시지로 넘어가요.
+    }
+  }
+  return error instanceof Error ? error.message : '함께 보드 삭제에 실패했어요.';
 }
 
 // 룸의 칸·멤버 변경을 실시간 구독해요. 변경이 오면 onChange()가 호출돼요(호출부에서 재조회).
