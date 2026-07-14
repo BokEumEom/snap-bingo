@@ -14,6 +14,7 @@ import { parseInvite, parseRoomId, Invite } from './lib/invite';
 import { createRoom, deleteRoom, leaveRoom, joinRoom } from './lib/room';
 import { scopeSharedRefs } from './lib/sharedRefs';
 import { setNickname } from './lib/identity';
+import { shareRoomInvite } from './lib/share';
 import { useSharedBoard } from './hooks/useSharedBoard';
 import NewBoardForm from './components/NewBoardForm';
 import InviteSheet from './components/InviteSheet';
@@ -65,6 +66,7 @@ export default function App() {
     cellTitle: string;
     photoUrl: string;
     tier: CompletionTier;
+    shared: boolean; // 함께 보드에서 채운 칸이면 완료 화면에 룸 초대 넛지를 보여줘요.
   } | null>(null);
 
   // 공유(함께) 보드 상태. sharedRoomId가 있으면 그 룸을 실시간 구독해요.
@@ -241,6 +243,7 @@ export default function App() {
           cellTitle: justCompleted?.title ?? '',
           photoUrl,
           tier,
+          shared: true,
         });
         setViewState('complete');
       } catch {
@@ -320,7 +323,12 @@ export default function App() {
 
     const justCompleted = updatedCells.find((c) => c.id === cellId);
     if (justCompleted) {
-      setCompletedCell({ cellTitle: justCompleted.title, photoUrl, tier });
+      setCompletedCell({
+        cellTitle: justCompleted.title,
+        photoUrl,
+        tier,
+        shared: false,
+      });
       setViewState('complete');
     }
   };
@@ -669,6 +677,17 @@ export default function App() {
             cellTitle={completedCell.cellTitle}
             photoUrl={completedCell.photoUrl}
             tier={completedCell.tier}
+            shared={completedCell.shared}
+            onShareBack={() => {
+              if (sharedBoard?.roomId == null) {
+                return;
+              }
+              void shareRoomInvite(
+                openToast,
+                sharedBoard,
+                `방금 '${completedCell.cellTitle}' 칸을 채웠어요! '${sharedBoard.title}' 같이 채우러 와요 📸`,
+              );
+            }}
             onConfirm={handleConfirmCompletion}
             onViewCard={handleViewCard}
           />

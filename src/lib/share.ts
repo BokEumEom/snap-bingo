@@ -102,13 +102,14 @@ export async function shareBoardInvite(
 export async function shareRoomInvite(
   onFallback: (message: string) => void,
   board: BingoBoard,
+  // fill 순간 넛지 등에서 다른 문구로 덮어쓸 수 있어요. 기본은 일반 룸 초대 문구예요.
+  message: string = `찍고빙고에서 '${board.title}' 빙고를 함께 채워요! 한 판을 실시간으로 같이 완성해요 📸`,
 ): Promise<void> {
   if (board.roomId == null) {
     onFallback('공유 보드가 아니라 초대 링크를 만들 수 없어요.');
     return;
   }
   const target = `${DEEP_LINK}?${encodeRoomInviteParams(board.roomId)}`;
-  const message = `찍고빙고에서 '${board.title}' 빙고를 함께 채워요! 한 판을 실시간으로 같이 완성해요 📸`;
   try {
     const link = await withTimeout(
       getTossShareLink(target, defaultOgImageUrl()),

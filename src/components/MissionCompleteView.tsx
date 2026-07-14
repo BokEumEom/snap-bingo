@@ -8,6 +8,8 @@ interface MissionCompleteViewProps {
   cellTitle: string;
   photoUrl: string;
   tier: CompletionTier;
+  shared: boolean; // 함께 보드에서 채운 칸이면 룸 초대 넛지 버튼을 노출해요.
+  onShareBack: () => void;
   onConfirm: () => void;
   onViewCard: () => void;
 }
@@ -38,6 +40,8 @@ export default function MissionCompleteView({
   cellTitle,
   photoUrl,
   tier,
+  shared,
+  onShareBack,
   onConfirm,
   onViewCard,
 }: MissionCompleteViewProps) {
@@ -204,6 +208,18 @@ export default function MissionCompleteView({
         {isCelebration && (
           <Button color="primary" display="block" size="xlarge" onClick={onViewCard}>
             빙고 카드 보기
+          </Button>
+        )}
+        {/* 함께 보드 fill 순간 넛지 — 룸 링크를 공유해 친구를 다시 불러와요(리텐션 루프의 재공유 조각). */}
+        {shared && (
+          <Button
+            color="primary"
+            variant="weak"
+            display="block"
+            size="xlarge"
+            onClick={onShareBack}
+          >
+            친구들한테 알려주기
           </Button>
         )}
         <Button
