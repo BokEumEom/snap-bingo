@@ -131,6 +131,11 @@ export default function App() {
       (c) =>
         c.completed && c.photoUrl != null && c.completedBy?.uid === sharedMyUid,
     );
+    // 대시보드 카드 라벨용 진행도 — 전체 9칸 중 누구든 채운 칸(협업 진행도) 스냅샷.
+    const sharedProgress = {
+      completed: sharedBoard.cells.filter((c) => c.completed).length,
+      total: sharedBoard.cells.length,
+    };
     setSharedRefs((prev) => {
       const ref: BingoBoard = {
         id: `room-${roomId}`,
@@ -139,6 +144,7 @@ export default function App() {
         cells: myCells,
         shared: true,
         roomId,
+        sharedProgress,
       };
       const idx = prev.findIndex((r) => r.roomId === roomId);
       if (idx !== -1 && JSON.stringify(prev[idx]) === JSON.stringify(ref)) {

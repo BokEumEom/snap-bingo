@@ -86,13 +86,19 @@ export default function DashboardView({
           <div className="space-y-3">
             {boards.map((board) => {
               const shared = board.shared === true;
-              const completedCount = board.cells.filter(c => c.completed).length;
-              const totalCount = board.cells.length;
+              // 솔로는 보드(=내 칸) 진행도, 함께는 sharedProgress(전체 9칸 중 채운 칸) 스냅샷을 써요.
+              // (함께 보드의 cells엔 갤러리용 '내 칸'만 담겨, 그대로 세면 항상 N/N·100%가 돼요.)
+              const completedCount = shared
+                ? board.sharedProgress?.completed ?? 0
+                : board.cells.filter((c) => c.completed).length;
+              const totalCount = shared
+                ? board.sharedProgress?.total ?? 0
+                : board.cells.length;
               const percent =
                 totalCount > 0
                   ? Math.round((completedCount / totalCount) * 100)
                   : 0;
-              // 공유 보드 카드는 라이브 개수를 미리 알 수 없어 트로피/퍼센트 대신 '함께' 배지를 보여줘요.
+              // 트로피는 개인 성취라 솔로 전용이에요(함께는 마지막 동기화 진행도만 라벨로 보여줘요).
               const earned = !shared && totalCount > 0 && completedCount === totalCount;
 
               return (
@@ -126,30 +132,27 @@ export default function DashboardView({
                     </p>
                   </div>
 
-                  {/* 진행 — 솔로는 개수(N/N)+퍼센트(%), 공유는 '함께' 배지 */}
+                  {/* 진행 — 솔로·함께 모두 개수(N/9)+퍼센트(%). 함께는 앞에 '함께' 태그를 덧붙여요. */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {shared ? (
+                    {shared && (
                       <Badge variant="weak" size="xsmall" color="blue">
                         함께
                       </Badge>
-                    ) : (
-                      <>
-                        <Badge
-                          variant="weak"
-                          size="xsmall"
-                          color={percent === 100 ? 'green' : 'blue'}
-                        >
-                          {`${completedCount}/${totalCount}`}
-                        </Badge>
-                        <Badge
-                          variant="weak"
-                          size="xsmall"
-                          color={percent === 100 ? 'green' : 'blue'}
-                        >
-                          {`${percent}%`}
-                        </Badge>
-                      </>
                     )}
+                    <Badge
+                      variant="weak"
+                      size="xsmall"
+                      color={percent === 100 ? 'green' : 'blue'}
+                    >
+                      {`${completedCount}/${totalCount}`}
+                    </Badge>
+                    <Badge
+                      variant="weak"
+                      size="xsmall"
+                      color={percent === 100 ? 'green' : 'blue'}
+                    >
+                      {`${percent}%`}
+                    </Badge>
                   </div>
                 </div>
               );

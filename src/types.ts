@@ -46,6 +46,9 @@ export interface BingoBoard {
   templateId?: string; // 템플릿에서 만든 보드의 원본 템플릿 id. '함께 시작' 초대 링크를 온전히 재현해요.
   roomId?: string; // 공유(함께) 보드면 Supabase 룸 id. 있으면 실시간 공동 편집 보드예요.
   shared?: boolean; // 공유 보드 여부(roomId와 함께 세팅돼요).
+  // 함께 보드의 마지막 동기화 진행도(전체 칸 중 누구든 채운 칸). 대시보드 카드 라벨(N/9·%)에 써요.
+  // cells는 갤러리용 '내 칸'만 담아 그대로 세면 항상 N/N·100%라, 진행도만 따로 스냅샷해요.
+  sharedProgress?: { completed: number; total: number };
 }
 
 export type ViewState =
