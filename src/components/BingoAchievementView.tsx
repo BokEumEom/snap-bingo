@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { ArrowLeft, Sparkles } from 'lucide-react';
-import { useToast, Button, Badge } from '@toss/tds-mobile';
+import { ArrowLeft } from 'lucide-react';
+import { useToast, Button } from '@toss/tds-mobile';
 import { BingoBoard } from '../types';
-import { APP_ICON } from '../data';
 import { shareApp } from '../lib/share';
 import { countBingoLines } from '../lib/badges';
-import Emoji from './Emoji';
+import SummerPieceCard from './SummerPieceCard';
 
 interface BingoAchievementViewProps {
   board: BingoBoard;
@@ -64,75 +63,8 @@ export default function BingoAchievementView({
       {/* Main Content Scroll container */}
       <main className="flex-1 px-5 py-5 flex flex-col items-center justify-center animate-fade-in space-y-6">
         
-        {/* Souvenir Achievement Card */}
-        <div className="w-full bg-surface rounded-[32px] overflow-hidden shadow-xl border border-hairline/60 p-6 flex flex-col relative">
-          
-          {/* Sparkles effect */}
-          <div className="absolute top-4 right-4 text-amber-400 animate-pulse">
-            <Sparkles size={20} />
-          </div>
-
-          {/* Header section inside card */}
-          <div className="flex flex-col items-center mb-5 text-center">
-            <div className="mb-2">
-              <Badge
-                variant="weak"
-                size="small"
-                color={isPerfect ? 'yellow' : hasBingo ? 'green' : 'blue'}
-              >
-                {isPerfect ? '여름 미션 완료' : hasBingo ? '빙고 달성' : `${completedCount}/${totalCount} 진행 중`}
-              </Badge>
-            </div>
-            <h2 className="text-3xl font-extrabold text-blue-600 tracking-tighter">
-              {isDone ? 'BINGO!' : '빙고 진행 중'}
-            </h2>
-            <p className="text-xs text-neutral-400 mt-1">나의 여름 조각들</p>
-          </div>
-
-          {/* 3x3 Bingo Grid — 내 실제 빙고판(가운데는 브랜드 워터마크) */}
-          <div className="grid grid-cols-3 gap-2 w-full mb-5">
-            {board.cells.map((cell, i) => {
-              // 가운데 칸(index 4)은 브랜드 로고 워터마크로 표시해요.
-              if (i === 4) {
-                return (
-                  <div key={i} className="relative aspect-square rounded-[16px] overflow-hidden border border-blue-100/40">
-                    <img
-                      src={APP_ICON}
-                      alt="찍고빙고"
-                      className="w-full h-full object-cover scale-110"
-                    />
-                  </div>
-                );
-              }
-
-              return (
-                <div key={i} className="relative aspect-square rounded-[16px] overflow-hidden bg-neutral-50 border border-hairline">
-                  {cell.completed && cell.photoUrl ? (
-                    <img
-                      src={cell.photoUrl}
-                      alt={cell.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-50 text-neutral-200">
-                      <div className="w-1.5 h-1.5 bg-neutral-200 rounded-full"></div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Card Footer */}
-          <div className="flex justify-between items-center gap-2 pt-4 border-t border-hairline">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Emoji emoji={board.emoji} size={18} className="flex-shrink-0" alt="" />
-              <span className="text-xs font-bold text-neutral-800 truncate">{board.title}</span>
-            </div>
-            <p className="text-[11px] font-extrabold text-blue-600 flex-shrink-0">찍고빙고</p>
-          </div>
-
-        </div>
+        {/* Souvenir Achievement Card — 여름 조각 기념 카드(갤러리와 공용) */}
+        <SummerPieceCard board={board} />
 
         {/* Congratulations / progress Text */}
         <p className="text-xs font-medium text-neutral-500 text-center leading-relaxed px-4">

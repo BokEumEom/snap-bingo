@@ -8,10 +8,10 @@ interface Tab {
 }
 
 // IA(2026-07-06): 보드는 홈 목록에서 파고드는 콘텐츠라 탭에서 제외. 탑레벨 목적지
-// 2개 — 홈(만들기·목록·추천·초대) / 갤러리(여름 아카이브)만 탭으로 둠.
+// 2개 — 홈(만들기·목록·추천·초대) / 여름 조각(완성한 챌린지를 9칸 카드로 모아 공유)만 탭으로 둠.
 const TABS: Tab[] = [
   { key: 'dashboard', label: '홈', Icon: Home },
-  { key: 'gallery', label: '갤러리', Icon: Image },
+  { key: 'gallery', label: '여름 조각', Icon: Image },
 ];
 
 interface BottomNavProps {
