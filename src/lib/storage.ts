@@ -27,3 +27,15 @@ export async function setStorageItem(key: string, value: string): Promise<void> 
     }
   }
 }
+
+export async function removeStorageItem(key: string): Promise<void> {
+  try {
+    await Storage.removeItem(key);
+  } catch {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // 삭제 불가 환경 — 무시
+    }
+  }
+}
