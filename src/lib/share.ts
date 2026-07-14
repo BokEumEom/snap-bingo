@@ -6,7 +6,7 @@ import { encodeInviteParams, encodeRoomInviteParams } from './invite';
 // 앱 딥링크 (granite.config.ts appName: "snap-bingo" 기반 스킴).
 // TODO(app-in-toss): 콘솔 등록 후 정확한 딥링크로 확정.
 const DEEP_LINK = 'intoss://snap-bingo';
-const DEFAULT_MESSAGE = '찍고빙고에서 여름 사진 빙고를 함께 채워요! 📸';
+const DEFAULT_MESSAGE = '찍고빙고에서 여름 사진 빙고 시작해봐요! 📸';
 
 // 공유 프리뷰(카카오톡·SNS) 카드에 노출될 OG 이미지예요. 토스 링크 프리뷰 크롤러가
 // `getTossShareLink(url, ogImageUrl)`의 ogImageUrl을 가져가 그리므로, 반드시 **공개된
@@ -70,7 +70,7 @@ export async function shareApp(
     const link = await withTimeout(getTossShareLink(DEEP_LINK, ogImageUrl), 2500);
     await share({ message: `${message}\n${link}` });
   } catch {
-    onFallback('토스 앱에서 친구에게 공유할 수 있어요. 함께 빙고를 채워보세요!');
+    onFallback('토스 앱에서 친구에게 찍고빙고를 추천할 수 있어요!');
   }
 }
 

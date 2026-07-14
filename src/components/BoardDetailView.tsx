@@ -227,14 +227,17 @@ export default function BoardDetailView({
           </div>
         )}
 
-        {/* 친구 초대 — 공유 보드면 같은 룸에 실시간 참가, 솔로면 각자 채우기 링크를 공유해요 */}
-        <button
-          onClick={handleInvite}
-          className="w-full flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-blue-50 text-blue-600 text-sm font-bold hover:bg-blue-100 active:scale-[0.99] transition-all"
-        >
-          <UserPlus size={16} />
-          {shared ? '함께 채울 친구 초대하기' : '이 챌린지에 친구 초대하기'}
-        </button>
+        {/* 친구 초대 — 함께 보드에서만 노출해요. 같은 룸에 실시간 참가하는 초대 링크를 공유해요.
+            (솔로 보드는 개인용이라 초대가 없어요 — 같이 채우려면 '함께'로 만들어야 해요.) */}
+        {shared && (
+          <button
+            onClick={handleInvite}
+            className="w-full flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-blue-50 text-blue-600 text-sm font-bold hover:bg-blue-100 active:scale-[0.99] transition-all"
+          >
+            <UserPlus size={16} />
+            이 챌린지에 친구 초대하기
+          </button>
+        )}
 
         {/* 3x3 Bingo Grid */}
         <section className="grid grid-cols-3 gap-3">

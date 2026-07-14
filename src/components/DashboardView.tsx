@@ -161,13 +161,13 @@ export default function DashboardView({
         <section className="pb-4">
           <div className="bg-neutral-100/60 rounded-[24px] p-5 flex items-center justify-between">
             <div>
-              <h4 className="text-base font-bold text-neutral-900">친구 초대하기</h4>
-              <p className="text-xs text-neutral-500 mt-1">친구와 함께 빙고를 채워보세요.</p>
+              <h4 className="text-base font-bold text-neutral-900">친구에게 추천하기</h4>
+              <p className="text-xs text-neutral-500 mt-1">친구도 여름 빙고를 시작해봐요.</p>
               <button
                 onClick={handleInvite}
                 className="text-xs font-bold text-blue-600 flex items-center mt-2 active:scale-95 transition-transform"
               >
-                초대 링크 공유 <ChevronRight size={14} />
+                추천 링크 공유 <ChevronRight size={14} />
               </button>
             </div>
             <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
