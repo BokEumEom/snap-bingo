@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { BingoBoard, BingoCell } from '../types';
 import { BOARD_TEMPLATES } from '../data';
 import { ensureUid, getNickname } from '../lib/identity';
+import { getSeenCells, setSeenCells } from '../lib/roomSeen';
 import {
   fetchRoomState,
   claimCell,
@@ -31,6 +32,9 @@ export interface SharedBoardState {
   deleted: boolean;
   loading: boolean;
   error: string | null;
+  // 함께 방을 다시 열 때, 마지막으로 본 뒤 "남이" 새로 채운 칸 소식이에요(없으면 null).
+  // 열 때 1회 계산돼요 — 대시보드/보드에서 재방문 보상 토스트로 써요.
+  news: { count: number; nicknames: string[] } | null;
   // 칸 인증(선착순). 이겼으면 썸네일까지 올려요. 반환값으로 승패·누가 채웠는지 알려줘요.
   claim: (
     cellId: number,
@@ -115,11 +119,16 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleted, setDeleted] = useState(false);
+  const [news, setNews] = useState<{
+    count: number;
+    nicknames: string[];
+  } | null>(null);
 
   useEffect(() => {
     if (roomId == null) {
       setState(null);
       setDeleted(false);
+      setNews(null);
       return;
     }
 
@@ -129,6 +138,7 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
     setLoading(true);
     setError(null);
     setDeleted(false);
+    setNews(null);
 
     (async () => {
       try {
@@ -143,12 +153,45 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
         setMyUid(uid);
         setState(fresh);
 
+        // '새 소식' — 마지막으로 본 뒤 "남이" 새로 채운 칸을 diff해 알려줘요.
+        // 구독을 걸기 전에 seenBefore를 읽어, 라이브 갱신이 기준값을 덮어쓰지 않게 해요.
+        const seenBefore = new Set(await getSeenCells(roomId));
+        if (active) {
+          const newByOthers = fresh.cells.filter(
+            (c) => !seenBefore.has(c.cell_index) && c.completed_by_uid !== uid,
+          );
+          if (newByOthers.length > 0) {
+            const nickByUid = new Map(
+              fresh.members.map((m) => [m.uid, m.nickname]),
+            );
+            const nicknames = Array.from(
+              new Set(
+                newByOthers.map(
+                  (c) =>
+                    nickByUid.get(c.completed_by_uid) ?? c.completed_by_nick,
+                ),
+              ),
+            );
+            setNews({ count: newByOthers.length, nicknames });
+          }
+        }
+        // 이번 방문을 last-seen으로 저장(다음 방문 diff 기준). 아래 구독에서 라이브로 새로
+        // 보는 칸도 갱신해, 다음에 다시 열 때 이미 본 칸이 재알림되지 않아요.
+        await setSeenCells(
+          roomId,
+          fresh.cells.map((c) => c.cell_index),
+        );
+
         unsubscribe = subscribeRoom(roomId, () => {
           void (async () => {
             try {
               const next = await fetchRoomState(roomId);
               if (active) {
                 setState(next);
+                void setSeenCells(
+                  roomId,
+                  next.cells.map((c) => c.cell_index),
+                );
               }
             } catch {
               // 재조회 실패 — 방이 삭제된 건지(방장이 지움) 일시적 오류인지 구분해요.
@@ -260,6 +303,7 @@ export function useSharedBoard(roomId: string | null): SharedBoardState {
     deleted,
     loading,
     error,
+    news,
     claim,
     updateNickname,
     changePhoto,

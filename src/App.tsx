@@ -81,6 +81,7 @@ export default function App() {
     isOwner: sharedIsOwner,
     myUid: sharedMyUid,
     deleted: sharedDeleted,
+    news: sharedNews,
     claim,
     updateNickname,
     changePhoto,
@@ -180,6 +181,18 @@ export default function App() {
     setViewState('dashboard');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sharedDeleted, sharedRoomId]);
+
+  // 함께 방을 다시 열면, 마지막으로 본 뒤 친구가 채운 칸을 '새 소식' 토스트로 알려줘요(재방문 보상).
+  useEffect(() => {
+    if (sharedNews == null || sharedNews.count === 0) {
+      return;
+    }
+    const [first, ...rest] = sharedNews.nicknames;
+    const who =
+      rest.length > 0 ? `${first}님 외 ${rest.length}명이` : `${first}님이`;
+    openToast(`마지막 방문 후 ${who} ${sharedNews.count}칸 채웠어요 📸`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedNews]);
 
   // Persist on every update (fire-and-forget; UI already updated via setBoards)
   const saveBoards = (updatedBoards: BingoBoard[]) => {
